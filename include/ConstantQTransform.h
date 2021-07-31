@@ -65,8 +65,8 @@ public:
 	void initKernels(const CplxVector* const kernelArray, const CplxVector* const kernelArrayInverse, const std::vector<int>* const kernelMask, const std::vector<int>* const kernelMaskInv);
 	void initFs(const int blockSize);
 
-	void cqtTransform(ScheduleElement schedule);
-	void icqtTransform(ScheduleElement schedule);
+	void cqtTransform(const ScheduleElement schedule);
+	void icqtTransform(const ScheduleElement schedule);
 
 	static void calculateWindow(double* const windowData, const int size);
 	static void calculateInverseWindow(double* const windowData, double* const invWindowData, const int size, const int hopSize);
@@ -83,7 +83,7 @@ private:
 	std::vector<int> mKernelMaskInv[B]; // mB x Fft_Domain_Size
 
 	// scaling 
-	const double mFftScalingFactor = 1. / std::sqrt(static_cast<double>(Fft_Size));
+	const double mFftScalingFactor{ 1. / std::sqrt(static_cast<double>(Fft_Size)) };
 	// pffft
 	pffft::Fft<double> mFft;
 	RealVector mFftInputBuffer;
@@ -168,7 +168,7 @@ inline void TransformationHandler<B>::initFs(const int blockSize)
 }
 
 template <int B>
-inline void TransformationHandler<B>::cqtTransform(ScheduleElement schedule)
+inline void TransformationHandler<B>::cqtTransform(const ScheduleElement schedule)
 {
 	// collect the fft input data
 	mStageInputBuffer->pullDelayBlock(mFftInputBuffer.data(), static_cast<int>(Fft_Size) + schedule.delayOctaveRate - 1, static_cast<int>(Fft_Size)); 
@@ -197,7 +197,7 @@ inline void TransformationHandler<B>::cqtTransform(ScheduleElement schedule)
 };
 
 template <int B>
-inline void TransformationHandler<B>::icqtTransform(ScheduleElement schedule)
+inline void TransformationHandler<B>::icqtTransform(const ScheduleElement schedule)
 {
 	// kernel multiplications
 	for (int i = 0; i < Fft_Domain_Size; i++)
@@ -283,8 +283,8 @@ public:
 
 	void inputBlock(double* const data, const int blockSize);
 	double* outputBlock(const int blockSize);
-	void cqt(ScheduleElement schedule);
-	void icqt(ScheduleElement schedule);
+	void cqt(const ScheduleElement schedule);
+	void icqt(const ScheduleElement schedule);
 
 	inline std::vector<ScheduleElement>& getCqtSchedule() { return mCqtSchedule; };
 	inline CqtBufferType* getOctaveCqtBuffer(const int octave) { return mTransformationHandlers[octave].getCqtBuffer(); };
@@ -542,13 +542,13 @@ inline double* ConstantQTransform<B, OctaveNumber>::outputBlock(const int blockS
 };
 
 template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::cqt(ScheduleElement schedule)
+inline void ConstantQTransform<B, OctaveNumber>::cqt(const ScheduleElement schedule)
 {
 	mTransformationHandlers[schedule.octave].cqtTransform(schedule);
 };
 
 template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::icqt(ScheduleElement schedule)
+inline void ConstantQTransform<B, OctaveNumber>::icqt(const ScheduleElement schedule)
 {
 	mTransformationHandlers[schedule.octave].icqtTransform(schedule);
 };
