@@ -28,3 +28,14 @@ for(const auto& s : schedule)
   cqt.icqt(s);
 }
 ```
+Even though this library is header-only, the pffft implementation is not. Hence, the following files have to be linked into your project:
+```cpp
+submodules/pffft/pffft.c
+submodules/pffft/pffft_common.c
+submodules/pffft/pffft_double.c
+```
+
+## Example Project
+
+## Limitations and Future Work
+
