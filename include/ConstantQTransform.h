@@ -16,12 +16,12 @@
 * - No Zero Padding as of now
 */
 
-#include "../Common/CircularBuffer.h"
-#include "../Common/ResamplingFilterbank.h"
-#include "../Common/Utils.h"
+#include "CircularBuffer.h"
+#include "ResamplingFilterbank.h"
+#include "Utils.h"
 #define SIMD_SZ 1
 #define PFFFT_ENABLE_DOUBLE
-#include "../FFT/pffft-master/pffft.hpp"
+#include "../submodules/pffft/pffft.hpp"
 #include <complex>
 
 namespace Cqt 
