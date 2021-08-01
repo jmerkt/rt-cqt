@@ -19,6 +19,7 @@
 #include "CircularBuffer.h"
 #include "ResamplingFilterbank.h"
 #include "Utils.h"
+
 #define SIMD_SZ 1
 #define PFFFT_ENABLE_DOUBLE
 #include "../submodules/pffft/pffft.hpp"
@@ -522,7 +523,7 @@ inline void ConstantQTransform<B, OctaveNumber>::inputBlock(double* const data, 
 	mCqtSchedule.clear();
 	for (int i = 0; i < blockSize; i++)
 	{
-		for (int octave = (OctaveNumber - 1); octave >= 0; octave--)
+		for (int octave = (OctaveNumber - 1); octave >= 0; octave--) // starting with lowest pitched octave for historical reasons
 		{
 			mSampleCounters[octave]++;
 			if (mSampleCounters[octave] >= mLatencySamples[octave])
