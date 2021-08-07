@@ -42,7 +42,7 @@ typedef CplxVector CqtBufferType;
 
 
 /*
-Structure to schedule transformation timings
+Structure to schedule transformation timings.
 */
 struct ScheduleElement
 {

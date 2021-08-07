@@ -76,7 +76,8 @@ private:
 
 
 /*
-	See paper: "Digital signal processing schemes for efficient interpolation and decimation".
+*	Polyphase IIR Lowpass to sample up/down by 2.
+	See paper: "Reinaldo A. Valenzuela, A. G. Constantinides: Digital signal processing schemes for efficient interpolation and decimation".
 	This class handles memory allocation and downsampling/upsampling filtering for incoming samples/blocks by 2.
 	One instance of this class can either be used for Downsampling OR for Upsampling. Not for both at the same time.
 */
@@ -359,8 +360,7 @@ enum class DirectionConfig
 };
 
 /**
-Resampling of audio blocks or samples by a given power of 2.
-Init function has to get called before processing or after BlockSize changes.	
+Resampling of audio blocks or samples by a given power of 2.	
 */
 template <typename FloatType, size_t AllpassNumber>
 class ResamplingHandler
@@ -370,13 +370,10 @@ public:
 	~ResamplingHandler();
 	/**
 	Initialization of the ResamplingHandler
-
-	* powTwoFactor: Resulting resampling will be 2^powTwoFactor.
-	* expectedBlockSize: Expected input block size to allocate memory.
-	* sampleConfig: Define whether sample based or block based processing is applies. For block based processing memory will be allocated.
-	* directionConfig: Define wether only upsampling/downsampling or both directions will be processed.
+	The configuration gives the amount of memory that will be allocated.
+	DirectionConfig has to match the order the processing functions will be called from outside.
 	*/
-	void init(const int powTwoFactor = 0, const int expectedBlockSize = 128, ProcessConfig sampleConfig = ProcessConfig::Sample, DirectionConfig directionConfig = DirectionConfig::UpDown);
+	void init(const int powToExponent = 0, const int expectedBlockSize = 128, ProcessConfig sampleConfig = ProcessConfig::Sample, DirectionConfig directionConfig = DirectionConfig::UpDown);
 	/*
 	Called with 2*fs target. isSampleRet indicates whether sample is relevant.
 	*/
@@ -426,7 +423,7 @@ ResamplingHandler<FloatType, AllpassNumber>::~ResamplingHandler()
 }
 
 template <typename FloatType, size_t AllpassNumber>
-inline void ResamplingHandler<FloatType, AllpassNumber>::init(const int powTwoFactor, const int expectedBlockSize, ProcessConfig sampleConfig, DirectionConfig directionConfig)
+inline void ResamplingHandler<FloatType, AllpassNumber>::init(const int powToExponent, const int expectedBlockSize, ProcessConfig sampleConfig, DirectionConfig directionConfig)
 {
 	for (auto filter : mDownFilters)
 	{
@@ -438,8 +435,8 @@ inline void ResamplingHandler<FloatType, AllpassNumber>::init(const int powTwoFa
 	}
 	mDownFilters.clear();
 	mUpFilters.clear();
-	mPowTwoFactor = powTwoFactor;
-	mResamplingFactor = std::pow(2, powTwoFactor);
+	mPowTwoFactor = powToExponent;
+	mResamplingFactor = std::pow(2, powToExponent);
 	for (int i = 0; i < mPowTwoFactor;i++)
 	{
 		if (sampleConfig == ProcessConfig::Sample)
