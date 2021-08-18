@@ -1,5 +1,5 @@
 # rt-cqt: Real-Time Constant-Q-Transform
-rt-cqt is a reasonable fast header-only C++11 implementation of the Constant-Q-Transform. It is especially designed for easy usage in real-time audio applications, handling various block-sizes and samplerates.
+rt-cqt aims to be a reasonable fast header-only C++11 implementation of the Constant-Q-Transform. It is especially designed for easy usage in real-time audio applications, handling various block-sizes and samplerates.
 The implementation is roughly based on the [Judith C. Brown, Miller S. Puckette: An efficient algorithm  for the calculation  of a constant Q transform](http://academics.wellesley.edu/Physics/brown/pubs/effalgV92P2698-P2701.pdf) paper.
 [pffft](https://github.com/marton78/pffft) is used to handle the ffts, Polyphase IIR lowpasses to perform upsampling / downsampling.
 
