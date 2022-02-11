@@ -1,3 +1,6 @@
 [submodule "submodules/pffft"]
 	path = submodules/pffft
 	url = https://github.com/marton78/pffft.git
+[submodule "submodules/pybind11"]
+	path = submodules/pybind11
+	url = https://github.com/pybind/pybind11.git

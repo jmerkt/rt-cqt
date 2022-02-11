@@ -19,6 +19,8 @@
 #include "CircularBuffer.h"
 #include "ResamplingFilterbank.h"
 #include "Utils.h"
+#include <atomic>
+#include <memory>
 
 #define SIMD_SZ 1
 #define PFFFT_ENABLE_DOUBLE
@@ -298,7 +300,7 @@ public:
 	inline std::vector<std::vector<double>>& getKernelFreqsInv() { return mKernelFreqsInv; };
 	inline void resetKernelFreqs() { initKernelFreqs(); };
 
-private:
+protected:
 	void initKernelFreqs();
 	void calculateKernels();
 
