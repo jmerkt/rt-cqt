@@ -40,6 +40,7 @@ public:
 	double* outputBlock(const int blockSize);
 
 	double getOriginSamplerate() { return mOriginSamplerate; };
+	int getOriginBlockSize(){ return mOriginBlockSize; };
 	BufferPtr getStageInputBuffer(const int stage) { return &mStageInputBuffers[stage]; };
 	BufferPtr getStageOutputBuffer(const int stage) { return &mStageOutputBuffers[stage]; };
 	int getOriginDownsampling() { return mOriginDownsampling; };
