@@ -18,6 +18,7 @@
 TODO: 
 - Windowing
 - Parallelization
+- Block processing instead of sample
 */
 
 
@@ -41,7 +42,7 @@ public:
     void inputBlock(double* const data, const int blockSize);
 	double* outputBlock(const int blockSize);
 
-    inline CircularBuffer<std::complex<double>>* getOctaveCqtBuffer(const int octave) { return &mCqtData[OctaveNumber][0]; };
+    inline CircularBuffer<std::complex<double>>* getOctaveCqtBuffer(const int octave) { return &mCqtData[octave][0]; };
     inline size_t getSamplesToProcess(const int octave){return mSamplesToProcess[octave];};
 
     inline double getOctaveSampleRate(const int octave) { return mSampleRates[octave]; };
@@ -70,15 +71,12 @@ private:
     double mNkDouble[OctaveNumber][B];
     double mOneDivNkDouble[OctaveNumber][B];
     double mBinFreqs[OctaveNumber][B];
+    std::complex<double> mFtPrev[OctaveNumber][B];
 
     size_t mSamplesToProcess[OctaveNumber];
 
     // cqt data
     CircularBuffer<std::complex<double>> mCqtData[OctaveNumber][B];
-
-    // for modification of synthesis
-    double mPhaseOffsets[OctaveNumber][B];
-
 };
 
 template <int B, int OctaveNumber>
@@ -96,6 +94,7 @@ SlidingCqt<B, OctaveNumber>::SlidingCqt()
             mOneDivNkDouble[o][tone] = 0.;
             mBinFreqs[o][tone] = 0.;
             mPhaseOffsets[o][tone] = 0.;
+            mFtPrev[o][tone] = 0. + 0.i;
         }
     }
 }
@@ -128,6 +127,7 @@ inline void SlidingCqt<B, OctaveNumber>::init(const double samplerate, const int
             const size_t octaveBlockSize = blockSize / std::pow(2, o);
             const size_t octaveBlockSizeClipped = octaveBlockSize > 2 ? octaveBlockSize : 2; 
             mCqtData[o][tone].changeSize(octaveBlockSizeClipped);
+            mFtPrev[o][tone] = 0. + 0.i;
         }
     }
 };
@@ -150,9 +150,9 @@ inline void SlidingCqt<B, OctaveNumber>::inputBlock(double* const data, const in
 		calculateKernels();
 	}
 
-    //push data into resampling
+    // push data into multirate resampling
     mFilterbank.inputBlock(data, blockSize);
-    //process all cqt sample based on numbers pushed into stage buffers
+    // process all cqt sample based on numbers pushed into stage buffers
     for(int o = 0; o < OctaveNumber; o++)
     {
         const BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(o);
@@ -171,9 +171,12 @@ inline void SlidingCqt<B, OctaveNumber>::inputBlock(double* const data, const in
                 const double delaySample = mDelayLines[o][tone].pullDelaySample(nk - 1);
                 const std::complex<double> expMInput = expQ * inputSample;
                 const std::complex<double> delayCplx{delaySample, 0.};
-                const std::complex<double> Ft = mCqtData[o][tone].pullDelaySample(0);
+                const std::complex<double> FtPrev = mFtPrev[o][tone];
 
-                mCqtData[o][tone].pushSample(expQNk * (Ft + (expMInput - delayCplx) * oneDivNkDouble)); 
+                const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
+                mFtPrev[o][tone] = Ft;
+
+                mCqtData[o][tone].pushSample(Ft); 
                 mDelayLines[o][tone].pushSample(inputSample);
             }
         }
@@ -193,7 +196,7 @@ inline double* SlidingCqt<B, OctaveNumber>::outputBlock(const int blockSize)
             for (int tone = 0; tone < B; tone++) 
             {
                 const double phaseOffset = mPhaseOffsets[o][tone];
-                const std::complex<double> expQNk = mExpQNk[o][tone]; //+ phaseOffset;
+                const std::complex<double> expQNk = mExpQNk[o][tone];;
                 const std::complex<double> Ft = mCqtData[o][tone].pullSample();
                 outputSample += (Ft * expQNk).real();
             }
@@ -212,7 +215,6 @@ inline void SlidingCqt<B, OctaveNumber>::calculateKernels()
     // exp multiplication 
     mExpQ = std::exp(-1i * TwoPi<double>() * mQ);
 
-    // TODO: HOW THIS WITH MORE THAN 12 TONES?????????????????? -> paper fk = (2^(1 / B)^k * f_min)
     /*
 	https://en.wikipedia.org/wiki/Piano_key_frequencies
 	f(n) = 2^((n-49)/12) * mConcertPitch
