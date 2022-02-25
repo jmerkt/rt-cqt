@@ -47,6 +47,8 @@ public:
 
     inline double getOctaveSampleRate(const int octave) { return mSampleRates[octave]; };
     inline int getOctaveBlockSize(const int octave) { return mBlockSizes[octave]; };
+    
+    inline double* getOctaveBinFreqs(const int octave){ return &mBinFreqs[octave][0]; };
 
 private:
     void calculateKernels();
@@ -93,7 +95,6 @@ SlidingCqt<B, OctaveNumber>::SlidingCqt()
             mNkDouble[o][tone] = 0.;
             mOneDivNkDouble[o][tone] = 0.;
             mBinFreqs[o][tone] = 0.;
-            mPhaseOffsets[o][tone] = 0.;
             mFtPrev[o][tone] = 0. + 0.i;
         }
     }
@@ -195,7 +196,6 @@ inline double* SlidingCqt<B, OctaveNumber>::outputBlock(const int blockSize)
             double outputSample = 0.;
             for (int tone = 0; tone < B; tone++) 
             {
-                const double phaseOffset = mPhaseOffsets[o][tone];
                 const std::complex<double> expQNk = mExpQNk[o][tone];;
                 const std::complex<double> Ft = mCqtData[o][tone].pullSample();
                 outputSample += (Ft * expQNk).real();
