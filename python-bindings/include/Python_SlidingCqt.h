@@ -35,5 +35,16 @@ namespace Cqt
             return outputVector;
         };
 
+        std::vector<std::complex<double>> Python_getOctaveValues(const int octave)
+        {
+            std::vector<std::complex<double>> valueVector(B, {0., 0.});
+            CircularBuffer<std::complex<double>>* octaveCqtBuffer = this->getOctaveCqtBuffer(octave);
+            for(int t = 0; t < B; t++)
+            {
+                valueVector[t] = octaveCqtBuffer[t].pullDelaySample(0);
+            }
+            return valueVector;
+        };
+
     };
 }

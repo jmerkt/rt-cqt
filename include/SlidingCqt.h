@@ -27,7 +27,7 @@ namespace Cqt
 
 using namespace std::complex_literals;
 
-template <int B, int OctaveNumber>
+template <int B, int OctaveNumber, bool Windowing = true>
 class SlidingCqt
 {
 public:
@@ -66,23 +66,29 @@ private:
     CircularBuffer<double> mDelayLines[OctaveNumber][B];
 
     // precalculated exp stuff
-    double mQ{ 0. };
-    std::complex<double> mExpQ{0. + 0i};
-    std::complex<double> mExpQNk[OctaveNumber][B];
+    double mQ[3]{0., 0., 0.};
+    std::complex<double> mExpQ[3]{0.+0.i, 0.+0.i, 0.+0.i};
+    std::complex<double> mExpQNk[OctaveNumber][B][3];
+    std::complex<double> mFtPrev[OctaveNumber][B][3];
+
     int mNk[OctaveNumber][B];
     double mNkDouble[OctaveNumber][B];
     double mOneDivNkDouble[OctaveNumber][B];
     double mBinFreqs[OctaveNumber][B];
-    std::complex<double> mFtPrev[OctaveNumber][B];
+    
 
     size_t mSamplesToProcess[OctaveNumber];
 
     // cqt data
     CircularBuffer<std::complex<double>> mCqtData[OctaveNumber][B];
+
+    // windowing
+    static constexpr double mWindowCoeffs[3] = {0.5, -0.25, -0.25};
+    static constexpr double mQAdd[3] = {0., -1., 1};
 };
 
-template <int B, int OctaveNumber>
-SlidingCqt<B, OctaveNumber>::SlidingCqt()
+template <int B, int OctaveNumber, bool Windowing>
+SlidingCqt<B, OctaveNumber, Windowing>::SlidingCqt()
 {
     for (int o = 0; o < OctaveNumber; o++) 
 	{
@@ -91,17 +97,21 @@ SlidingCqt<B, OctaveNumber>::SlidingCqt()
         mSamplesToProcess[o] = 0;
         for(int tone = 0; tone < B; tone++)
         {
-            mExpQNk[o][tone] = 0. + 0i;
+            mBinFreqs[o][tone] = 0.; 
             mNkDouble[o][tone] = 0.;
             mOneDivNkDouble[o][tone] = 0.;
-            mBinFreqs[o][tone] = 0.;
-            mFtPrev[o][tone] = 0. + 0.i;
+
+            for(int w = 0; w < 3; w++)
+            {
+                mExpQNk[o][tone][w] = 0. + 0i;
+                mFtPrev[o][tone][w] = 0. + 0.i;
+            }    
         }
     }
 }
 
-template <int B, int OctaveNumber>
-inline void SlidingCqt<B, OctaveNumber>::init(const double samplerate, const int blockSize)
+template <int B, int OctaveNumber, bool Windowing>
+inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate, const int blockSize)
 {
 	mFilterbank.init(samplerate, blockSize, blockSize * 2);
 	mFs = mFilterbank.getOriginSamplerate();
@@ -128,20 +138,24 @@ inline void SlidingCqt<B, OctaveNumber>::init(const double samplerate, const int
             const size_t octaveBlockSize = blockSize / std::pow(2, o);
             const size_t octaveBlockSizeClipped = octaveBlockSize > 2 ? octaveBlockSize : 2; 
             mCqtData[o][tone].changeSize(octaveBlockSizeClipped);
-            mFtPrev[o][tone] = 0. + 0.i;
+
+            for(int w = 0; w < 3; w++)
+            {
+                mFtPrev[o][tone][w] = 0. + 0.i;
+            }    
         }
     }
 };
 
-template <int B, int OctaveNumber>
-inline void SlidingCqt<B, OctaveNumber>::setConcertPitch(double concertPitch)
+template <int B, int OctaveNumber, bool Windowing>
+inline void SlidingCqt<B, OctaveNumber, Windowing>::setConcertPitch(double concertPitch)
 {
 	mConcertPitch = concertPitch;
 	recalculateKernels();
 };
 
-template <int B, int OctaveNumber>
-inline void SlidingCqt<B, OctaveNumber>::inputBlock(double* const data, const int blockSize)
+template <int B, int OctaveNumber, bool Windowing>
+inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize)
 {
     // check for new kernels
 	if (mNewKernels.load())
@@ -165,27 +179,56 @@ inline void SlidingCqt<B, OctaveNumber>::inputBlock(double* const data, const in
             const double inputSample = inputBuffer->pullSample();
             for (int tone = 0; tone < B; tone++) 
             {
-                const std::complex<double> expQ = mExpQ;
-                const std::complex<double> expQNk = mExpQNk[o][tone];
                 const double oneDivNkDouble = mOneDivNkDouble[o][tone];
                 const int nk = mNk[o][tone];
                 const double delaySample = mDelayLines[o][tone].pullDelaySample(nk - 1);
-                const std::complex<double> expMInput = expQ * inputSample;
+
                 const std::complex<double> delayCplx{delaySample, 0.};
-                const std::complex<double> FtPrev = mFtPrev[o][tone];
 
-                const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
-                mFtPrev[o][tone] = Ft;
+                if constexpr (Windowing == false)
+                {
+                    const std::complex<double> expQ = mExpQ[0];
+                    const std::complex<double> expQNk = mExpQNk[o][tone][0];
+                    const std::complex<double> FtPrev = mFtPrev[o][tone][0];
+                    const std::complex<double> expMInput = expQ * inputSample;
 
-                mCqtData[o][tone].pushSample(Ft); 
+                    const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
+
+                    mFtPrev[o][tone][0] = Ft;
+
+                    mCqtData[o][tone].pushSample(Ft); 
+                }
+                else
+                {
+                    std::complex<double> FtSum = 0. + 0.i;
+                    for(int w = 0; w < 3; w++)
+                    {
+                        const std::complex<double> expQ = mExpQ[w];
+                        const std::complex<double> expQNk = mExpQNk[o][tone][w];
+                        const std::complex<double> FtPrev = mFtPrev[o][tone][w];
+                        const std::complex<double> expMInput = expQ * inputSample;
+
+                        const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
+
+                        mFtPrev[o][tone][w] = Ft;
+
+                        FtSum += mWindowCoeffs[w] * Ft;
+                    }
+                    mCqtData[o][tone].pushSample(FtSum);
+                }
+             
                 mDelayLines[o][tone].pushSample(inputSample);
+
+                //const std::complex<double> inputCplx{inputSample, 0.};
+                //const std::complex<double> expMDelay = expQ * delaySample;
+                //const std::complex<double> Ft = expQNk * (FtPrev + (expMDelay - inputCplx) * oneDivNkDouble);
             }
         }
     }
 };
 
-template <int B, int OctaveNumber>
-inline double* SlidingCqt<B, OctaveNumber>::outputBlock(const int blockSize)
+template <int B, int OctaveNumber, bool Windowing>
+inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blockSize)
 {
     for(int o = 0; o < OctaveNumber; o++)
     {
@@ -196,7 +239,7 @@ inline double* SlidingCqt<B, OctaveNumber>::outputBlock(const int blockSize)
             double outputSample = 0.;
             for (int tone = 0; tone < B; tone++) 
             {
-                const std::complex<double> expQNk = mExpQNk[o][tone];;
+                const std::complex<double> expQNk = mExpQNk[o][tone][0];
                 const std::complex<double> Ft = mCqtData[o][tone].pullSample();
                 outputSample += (Ft * expQNk).real();
             }
@@ -206,14 +249,19 @@ inline double* SlidingCqt<B, OctaveNumber>::outputBlock(const int blockSize)
 	return mFilterbank.outputBlock(blockSize);
 };
 
-template <int B, int OctaveNumber>
-inline void SlidingCqt<B, OctaveNumber>::calculateKernels()
+template <int B, int OctaveNumber, bool Windowing>
+inline void SlidingCqt<B, OctaveNumber, Windowing>::calculateKernels()
 {
-    // Q
-    mQ = 1. / (std::pow(2., 1. / static_cast<double>(B)) - 1.);
+    
+    for(int w = 0; w < 3; w++)
+    {
+        // Q
+        mQ[w] = 1. / (std::pow(2., 1. / static_cast<double>(B)) - 1.);
+        mQ[w] += mQAdd[w];
 
-    // exp multiplication 
-    mExpQ = std::exp(-1i * TwoPi<double>() * mQ);
+        // exp multiplication 
+        mExpQ[w] = std::exp(-1i * TwoPi<double>() * mQ[w]);
+    }
 
     /*
 	https://en.wikipedia.org/wiki/Piano_key_frequencies
@@ -232,12 +280,15 @@ inline void SlidingCqt<B, OctaveNumber>::calculateKernels()
             const double fk = (fRef / std::pow(2., (o + 1))) * std::pow(2., static_cast<double>(B + tone) / static_cast<double>(B));
             mBinFreqs[o][tone] = fk;
             // Nk
-            mNk[o][tone] = static_cast<int>((fs / fk) * mQ);
+            mNk[o][tone] = static_cast<int>((fs / fk) * mQ[0]);
             const double nkDouble = static_cast<double>(mNk[o][tone]);
             mNkDouble[o][tone] = nkDouble;
             mOneDivNkDouble[o][tone] = 1. / nkDouble;
 
-            mExpQNk[o][tone] = std::exp(1i * TwoPi<double>() * mQ * mOneDivNkDouble[o][tone]);
+            for(int w = 0; w < 3; w++)
+            {
+                mExpQNk[o][tone][w] = std::exp(1i * TwoPi<double>() * mQ[w] * mOneDivNkDouble[o][tone]);
+            }
         }      
     }
 };

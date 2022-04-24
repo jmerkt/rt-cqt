@@ -40,7 +40,8 @@ PYBIND11_MODULE(rtcqt, m)
         .def(py::init<>())
         .def("init", &Cqt::Python_SlidingCqt<24, 9>::init)
         .def("inputBlock", &Cqt::Python_SlidingCqt<24, 9>::Python_inputBlock)
-        .def("outputBlock", &Cqt::Python_SlidingCqt<24, 9>::Python_outputBlock);
+        .def("outputBlock", &Cqt::Python_SlidingCqt<24, 9>::Python_outputBlock)
+        .def("getOctaveValues", &Cqt::Python_SlidingCqt<24, 9>::Python_getOctaveValues);
 
 
 #ifdef VERSION_INFO
