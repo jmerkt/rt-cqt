@@ -4,25 +4,24 @@
 #include <pybind11/numpy.h>
 
 #include "../include/Python_ConstantQTransform.h"
+#include "../include/Python_SlidingCqt.h"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(Cqt, m) 
+PYBIND11_MODULE(rtcqt, m) 
 {
     m.doc() = R"pbdoc(
         Pybind11 example plugin
         -----------------------
 
-        .. currentmodule:: Cqt
+        .. currentmodule:: rtcqt
 
         .. autosummary::
            :toctree: _generate
 
-           add
-           subtract
     )pbdoc";
 
     PYBIND11_NUMPY_DTYPE(Cqt::ScheduleElement, sample, octave, delayOctaveRate);
@@ -35,6 +34,14 @@ PYBIND11_MODULE(Cqt, m)
         .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<12, 9>::Python_getCqtSchedule)
         .def("cqt", &Cqt::Python_ConstantQTransform<12, 9>::Python_cqt)
         .def("getOctaveCqtBuffer", &Cqt::Python_ConstantQTransform<12, 9>::getOctaveCqtBuffer);
+
+
+    py::class_<Cqt::Python_SlidingCqt<24, 9>>(m, "SlidingCqt")
+        .def(py::init<>())
+        .def("init", &Cqt::Python_SlidingCqt<24, 9>::init)
+        .def("inputBlock", &Cqt::Python_SlidingCqt<24, 9>::Python_inputBlock)
+        .def("outputBlock", &Cqt::Python_SlidingCqt<24, 9>::Python_outputBlock)
+        .def("getOctaveValues", &Cqt::Python_SlidingCqt<24, 9>::Python_getOctaveValues);
 
 
 #ifdef VERSION_INFO

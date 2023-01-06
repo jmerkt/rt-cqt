@@ -28,6 +28,7 @@ public:
 	T pullDelaySample(const int delay);
 	void pullDelayBlock(T* const data, const int delay, const int blockSize);
 	void modulateDelayBlock(const T* const data, const int delay, const int blockSize); 
+	void modulateDelayBlockDouble(const double* const data, const int delay, const int blockSize);
 	inline size_t nextPowOfTwo(size_t size) { return std::pow(2, std::ceil(std::log(size) / std::log(2))); };
 	size_t getWriteReadDistance();
 	inline void resetReadPointer() { mReadPointer = mWritePointer; };
@@ -98,6 +99,23 @@ inline void CircularBuffer<T>::pullDelayBlock(T* const data, const int delay, co
 
 template <typename T>
 inline void CircularBuffer<T>::modulateDelayBlock(const T* const data, const int delay, const int blockSize)
+{
+	int position = (static_cast<int>(mWritePointer) - delay);
+	if (position < 0)
+	{
+		position += mBufferSize;
+	}
+	size_t readPointer = static_cast<size_t>(position);
+	for (int i = 0; i < blockSize; i++)
+	{
+		mBuffer[readPointer] *= data[i];
+		readPointer += 1;
+		readPointer = readPointer & mBufferSizeMinOne;
+	}
+}
+
+template <typename T>
+inline void CircularBuffer<T>::modulateDelayBlockDouble(const double* const data, const int delay, const int blockSize)
 {
 	int position = (static_cast<int>(mWritePointer) - delay);
 	if (position < 0)
