@@ -16,15 +16,9 @@
 
 /*
 TODO: 
-- Windowing
-- Parallelization
-- Block processing instead of sample
-- Only one delay line per octave with size of lagest nk
-
-
-
-BUG:
-- Windowing broken!
+- Optimization:
+    * Parallelization
+    * Block processing instead of sample
 */
 
 
@@ -96,21 +90,21 @@ private:
 template <size_t B, size_t OctaveNumber, bool Windowing>
 SlidingCqt<B, OctaveNumber, Windowing>::SlidingCqt()
 {
-    for (size_t o = 0; o < OctaveNumber; o++) 
+    for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++) 
 	{
-        mSampleRates[o] = 48000.;
-        mBlockSizes[o] = 0;
-        mSamplesToProcess[o] = 0;
-        for(size_t tone = 0; tone < B; tone++)
+        mSampleRates[i_octave] = 48000.;
+        mBlockSizes[i_octave] = 0;
+        mSamplesToProcess[i_octave] = 0;
+        for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
-            mBinFreqs[o][tone] = 0.; 
-            mNkDouble[o][tone] = 0.;
-            mOneDivNkDouble[o][tone] = 0.;
+            mBinFreqs[i_octave][i_tone] = 0.; 
+            mNkDouble[i_octave][i_tone] = 0.;
+            mOneDivNkDouble[i_octave][i_tone] = 0.;
 
-            for(size_t w = 0; w < 3; w++)
+            for(size_t i_window = 0; i_window < 3; i_window++)
             {
-                mExpQNk[o][tone][w] = 0. + 0i;
-                mFtPrev[o][tone][w] = 0. + 0.i;
+                mExpQNk[i_octave][i_tone][i_window] = 0. + 0i;
+                mFtPrev[i_octave][i_tone][i_window] = 0. + 0.i;
             }    
         }
     }
@@ -129,28 +123,28 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
 	}
 	computeKernels();
     // initialize delay lines
-    for(size_t o = 0; o < OctaveNumber; o++)
+    for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
         int maxNk = -1;
-        for(size_t tone = 0; tone < B; tone++)
+        for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
-            if(mNk[o][tone] > maxNk)
-                maxNk = mNk[o][tone];
+            if(mNk[i_octave][i_tone] > maxNk)
+                maxNk = mNk[i_octave][i_tone];
         }
-        mDelayLines[o].changeSize(maxNk);
+        mDelayLines[i_octave].changeSize(maxNk);
     }
 
-    for (size_t o = 0; o < OctaveNumber; o++) 
+    for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++) 
 	{
-        for(size_t tone = 0; tone < B; tone++)
+        for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
-            const size_t octaveBlockSize = blockSize / std::pow(2, o);
+            const size_t octaveBlockSize = blockSize / std::pow(2, i_octave);
             const size_t octaveBlockSizeClipped = octaveBlockSize > 2 ? octaveBlockSize : 2; 
-            mCqtData[o][tone].changeSize(octaveBlockSizeClipped);
+            mCqtData[i_octave][i_tone].changeSize(octaveBlockSizeClipped);
 
-            for(size_t w = 0; w < 3; w++)
+            for(size_t i_window = 0; i_window < 3u; i_window++)
             {
-                mFtPrev[o][tone][w] = 0. + 0.i;
+                mFtPrev[i_octave][i_tone][i_window] = 0. + 0.i;
             }    
         }
     }
@@ -177,57 +171,57 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
     // push data into multirate resampling
     mFilterbank.inputBlock(data, blockSize);
     // process all cqt sample based on numbers pushed into stage buffers
-    for(size_t o = 0; o < OctaveNumber; o++)
+    for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
-        const BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(o);
+        const BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
         const size_t nSamples = inputBuffer->getWriteReadDistance();
-        mSamplesToProcess[o] = nSamples;
+        mSamplesToProcess[i_octave] = nSamples;
 
-        for(size_t i = 0; i < nSamples; i++)
+        for(size_t i_sample = 0; i_sample < nSamples; i_sample++)
         {
             const double inputSample = inputBuffer->pullSample();
-            #pragma omp simd
-            for (size_t tone = 0; tone < B; tone++) 
+            // #pragma omp simd
+            for (size_t i_tone = 0; i_tone < B; i_tone++) 
             {
-                const double oneDivNkDouble = mOneDivNkDouble[o][tone];
-                const int nk = mNk[o][tone];
-                const double delaySample = mDelayLines[o].pullDelaySample(nk - 1);
+                const double oneDivNkDouble = mOneDivNkDouble[i_octave][i_tone];
+                const int nk = mNk[i_octave][i_tone];
+                const double delaySample = mDelayLines[i_octave].pullDelaySample(nk - 1);
 
                 const std::complex<double> delayCplx{delaySample, 0.};
 
                 if constexpr (Windowing == false)
                 {
                     const std::complex<double> expQ = mExpQ[0];
-                    const std::complex<double> expQNk = mExpQNk[o][tone][0];
-                    const std::complex<double> FtPrev = mFtPrev[o][tone][0];
+                    const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][0];
+                    const std::complex<double> FtPrev = mFtPrev[i_octave][i_tone][0];
                     const std::complex<double> expMInput = expQ * inputSample;
 
                     const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
 
-                    mFtPrev[o][tone][0] = Ft;
+                    mFtPrev[i_octave][i_tone][0] = Ft;
 
-                    mCqtData[o][tone].pushSample(Ft); 
+                    mCqtData[i_octave][i_tone].pushSample(Ft); 
                 }
                 else
                 {
                     std::complex<double> FtSum = 0. + 0.i;
-                    for(size_t w = 0; w < 3u; w++)
+                    for(size_t i_window = 0; i_window < 3u; i_window++)
                     {
-                        const std::complex<double> expQ = mExpQ[w];
-                        const std::complex<double> expQNk = mExpQNk[o][tone][w];
-                        const std::complex<double> FtPrev = mFtPrev[o][tone][w];
+                        const std::complex<double> expQ = mExpQ[i_window];
+                        const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][i_window];
+                        const std::complex<double> FtPrev = mFtPrev[i_octave][i_tone][i_window];
                         const std::complex<double> expMInput = expQ * inputSample;
 
                         const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
 
-                        mFtPrev[o][tone][w] = Ft;
+                        mFtPrev[i_octave][i_tone][i_window] = Ft;
 
-                        FtSum += mWindowCoeffs[w] * Ft;
+                        FtSum += mWindowCoeffs[i_window] * Ft;
                     }
-                    mCqtData[o][tone].pushSample(FtSum);
+                    mCqtData[i_octave][i_tone].pushSample(FtSum);
                 }
             }
-            mDelayLines[o].pushSample(inputSample);
+            mDelayLines[i_octave].pushSample(inputSample);
         }
     }
 };
@@ -235,18 +229,18 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
 template <size_t B, size_t OctaveNumber, bool Windowing>
 inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blockSize)
 {
-    for(size_t o = 0; o < OctaveNumber; o++)
+    for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
-        const BufferPtr outputBuffer = mFilterbank.getStageOutputBuffer(o);
-        const size_t nSamples = mSamplesToProcess[o];
-        for(size_t i = 0; i < nSamples; i++)
+        const BufferPtr outputBuffer = mFilterbank.getStageOutputBuffer(i_octave);
+        const size_t nSamples = mSamplesToProcess[i_octave];
+        for(size_t i_sample = 0; i_sample < nSamples; i_sample++)
         {
             double outputSample = 0.;
-            #pragma omp simd
-            for (size_t tone = 0; tone < B; tone++) 
+            // #pragma omp simd
+            for (size_t i_tone = 0; i_tone < B; i_tone++) 
             {
-                const std::complex<double> expQNk = mExpQNk[o][tone][0];
-                const std::complex<double> Ft = mCqtData[o][tone].pullSample();
+                const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][0];
+                const std::complex<double> Ft = mCqtData[i_octave][i_tone].pullSample();
                 outputSample += (Ft * expQNk).real();
             }
             outputBuffer->pushSample(outputSample);
@@ -259,14 +253,14 @@ template <size_t B, size_t OctaveNumber, bool Windowing>
 inline void SlidingCqt<B, OctaveNumber, Windowing>::computeKernels()
 {
     
-    for(size_t w = 0; w < 3; w++)
+    for(size_t i_window = 0; i_window < 3u; i_window++)
     {
         // Q
-        mQ[w] = 1. / (std::pow(2., 1. / static_cast<double>(B)) - 1.);
-        mQ[w] += mQAdd[w];
+        mQ[i_window] = 1. / (std::pow(2., 1. / static_cast<double>(B)) - 1.);
+        mQ[i_window] += mQAdd[i_window];
 
         // exp multiplication 
-        mExpQ[w] = std::exp(-1i * TwoPi<double>() * mQ[w]);
+        mExpQ[i_window] = std::exp(-1i * TwoPi<double>() * mQ[i_window]);
     }
 
     /*
@@ -276,24 +270,24 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::computeKernels()
 	*/
     const double fRef = std::pow(2., ((100. - 49.) / 12.)) * mConcertPitch;
 
-    for(size_t o = 0; o < OctaveNumber; o++)
+    for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
         // fs
-        const double fs = mSampleRates[o];
-        for (size_t tone = 0; tone < B; tone++) 
+        const double fs = mSampleRates[i_octave];
+        for (size_t i_tone = 0; i_tone < B; i_tone++) 
 		{
             // fk
-            const double fk = (fRef / std::pow(2., (o + 1))) * std::pow(2., static_cast<double>(B + tone) / static_cast<double>(B));
-            mBinFreqs[o][tone] = fk;
+            const double fk = (fRef / std::pow(2., (i_octave + 1))) * std::pow(2., static_cast<double>(B + i_tone) / static_cast<double>(B));
+            mBinFreqs[i_octave][i_tone] = fk;
             // Nk
-            mNk[o][tone] = static_cast<int>((fs / fk) * mQ[0]);
-            const double nkDouble = static_cast<double>(mNk[o][tone]);
-            mNkDouble[o][tone] = nkDouble;
-            mOneDivNkDouble[o][tone] = 1. / nkDouble;
+            mNk[i_octave][i_tone] = static_cast<int>((fs / fk) * mQ[0]);
+            const double nkDouble = static_cast<double>(mNk[i_octave][i_tone]);
+            mNkDouble[i_octave][i_tone] = nkDouble;
+            mOneDivNkDouble[i_octave][i_tone] = 1. / nkDouble;
 
-            for(int w = 0; w < 3; w++)
+            for(size_t i_window = 0; i_window < 3u; i_window++)
             {
-                mExpQNk[o][tone][w] = std::exp(1i * TwoPi<double>() * mQ[w] * mOneDivNkDouble[o][tone]);
+                mExpQNk[i_octave][i_tone][i_window] = std::exp(1i * TwoPi<double>() * mQ[i_window] * mOneDivNkDouble[i_octave][i_tone]);
             }
         }      
     }
