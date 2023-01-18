@@ -136,8 +136,9 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
         int maxNk = -1;
         for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
-            if(mNk[i_octave][i_tone] > maxNk)
-                maxNk = mNk[i_octave][i_tone];
+            const int delaySize = mNk[i_octave][i_tone] + mBlockSizes[i_octave] + 1u;
+            if(delaySize > maxNk)
+                maxNk = delaySize;
         }
         mDelayLines[i_octave].changeSize(static_cast<size_t>(maxNk));
     }
@@ -163,7 +164,6 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
         const size_t octaveBlockSize = mBlockSizes[i_octave];
 
         mInputSamplesBuffer[i_octave].resize(octaveBlockSize, 0.);
-
         mOutputSamplesBuffer[i_octave].resize(octaveBlockSize, 0.);
         for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
@@ -184,7 +184,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::setConcertPitch(double conce
 };
 
 template <size_t B, size_t OctaveNumber, bool Windowing>
-inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize)
+inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize) // TODO: Bug here!
 {
     // check for new kernels
 	if (mNewKernels.load())
@@ -204,12 +204,12 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
         mSamplesToProcess[i_octave] = nOctaveSamples;
 
         inputBuffer->pullBlock(mInputSamplesBuffer[i_octave].data(), nOctaveSamples);
+        mDelayLines[i_octave].pushBlock(mInputSamplesBuffer[i_octave].data(), nOctaveSamples);
         for (size_t i_tone = 0; i_tone < B; i_tone++) 
         {
             const int nk = mNk[i_octave][i_tone];
-            mDelayLines[i_octave].pullDelayBlock(mInputDelaySamplesBuffer[i_octave][i_tone].data(), nk - 1, nOctaveSamples);
+            mDelayLines[i_octave].pullDelayBlock(mInputDelaySamplesBuffer[i_octave][i_tone].data(), nk + nOctaveSamples - 1, nOctaveSamples);
         }
-
         for(size_t i_sample = 0; i_sample < nOctaveSamples; i_sample++)
         {
             #pragma omp simd
@@ -256,7 +256,6 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
         {
             mCqtData[i_octave][i_tone].pushBlock(mInputFtBuffer[i_octave][i_tone].data(), nOctaveSamples);
         }
-        mDelayLines[i_octave].pushBlock(mInputSamplesBuffer[i_octave].data(), nOctaveSamples);
     }
 };
 
