@@ -212,7 +212,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
         }
         for(size_t i_sample = 0; i_sample < nOctaveSamples; i_sample++)
         {
-            #pragma omp simd
+            // #pragma omp simd
             for (size_t i_tone = 0; i_tone < B; i_tone++) 
             {
                 const double oneDivNkDouble = mOneDivNkDouble[i_octave][i_tone];
@@ -273,7 +273,7 @@ inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blo
         }
         for(size_t i_sample = 0; i_sample < nOctaveSamples; i_sample++)
         {
-            #pragma omp simd
+            // #pragma omp simd
             for (size_t i_tone = 0; i_tone < B; i_tone++) 
             {
                 const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][0];
