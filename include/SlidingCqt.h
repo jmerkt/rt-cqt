@@ -61,10 +61,10 @@ private:
 
     ResamplingFilterbank<OctaveNumber> mFilterbank;
 
-    // delay lines / circular buffers for cqt stuff - do they need to be interpolating to match Nk more precicely?
+    // Do we need interpolating lines to match Nk more precicely?
     CircularBuffer<double> mDelayLines[OctaveNumber];
 
-    // precalculated exp stuff
+    // Pre-calculated exp stuff
     double mQ[3]{0., 0., 0.};
     std::complex<double> mExpQ[3]{0.+0.i, 0.+0.i, 0.+0.i};
     std::complex<double> mExpQNk[OctaveNumber][B][3];
@@ -78,10 +78,10 @@ private:
 
     size_t mSamplesToProcess[OctaveNumber];
 
-    // cqt data
+    // Cqt data
     CircularBuffer<std::complex<double>> mCqtData[OctaveNumber][B];
 
-    // windowing
+    // Windowing
     static constexpr double mWindowCoeffs[3] = {0.5, -0.25, -0.25};
     static constexpr double mQAdd[3] = {0., -1., 1};
 
@@ -184,7 +184,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::setConcertPitch(double conce
 };
 
 template <size_t B, size_t OctaveNumber, bool Windowing>
-inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize) // TODO: Bug here!
+inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize) 
 {
     // check for new kernels
 	if (mNewKernels.load())
