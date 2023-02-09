@@ -53,7 +53,7 @@ ax[0].set_ylabel('i_bin')
 
 ax[1].plot(time_data, audio_input_data, label='input')
 ax[1].plot(time_data, audio_output_data, label='output')
-ax[1].set_xlabel('sample')
+ax[1].set_xlabel('time')
 ax[1].set_ylabel('amplitude')
 ax[1].legend()
 
