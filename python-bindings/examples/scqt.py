@@ -59,5 +59,4 @@ ax[1].legend()
 
 
 # TODO: further evaluation with not just block-resampled scqt results, but actual samples on octave rates
-# TODO: forward / backward transform and check input vs. output
 
