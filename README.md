@@ -60,10 +60,10 @@ const double samplerate = 48000.;
 
 std::vector<double> audioInputBlock(blockSize, 0.);
 std::vector<double> audioOutputBlock(blockSize, 0.);
-std::vector<std::complex<double>> cqtDomainBuffers[octaveNumber][binsPerOctave];
+std::vector<std::complex<double>> cqtDomainBuffers[OctaveNumber][BinsPerOctave];
 
 Cqt::SlidingCqt<BinsPerOctave, OctaveNumber, Windowing> cqt;
-cqt.initFs(samplerate, blockSize);
+cqt.init(samplerate, blockSize);
 
 for(unsigned i_octave = 0u; i_octave < OctaveNumber; i_octave++)
 {
@@ -76,13 +76,13 @@ for(unsigned i_octave = 0u; i_octave < OctaveNumber; i_octave++)
   }
 }
 
-cqt.inputBlock(audioInputBlock.data());
+cqt.inputBlock(audioInputBlock.data(), blockSize);
 for(unsigned i_octave = 0u; i_octave < OctaveNumber; i_octave++)
 {
   // All complex values for each octave and bin are stored in circular buffers and can be accessed by getting a pointer to that buffer.
   // Because the data for each octave is downsampled, the number of samples per octave and block varies.
-  const size_t nSamplesOctave = mCqt.getSamplesToProcess(i_octave);
-  CircularBuffer<std::complex<double>>* octaveCqtBuffer = mCqt.getOctaveCqtBuffer(i_octave);
+  const size_t nSamplesOctave = cqt.getSamplesToProcess(i_octave);
+  CircularBuffer<std::complex<double>>* octaveCqtBuffer = cqt.getOctaveCqtBuffer(i_octave);
   for(unsigned i_tone = 0u; i_tone < BinsPerOctave; i_tone++)
   {
     octaveCqtBuffer[i_tone].pullBlock(cqtDomainBuffers[i_octave][i_tone].data(), nSamplesOctave);
