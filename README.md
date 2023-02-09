@@ -63,7 +63,7 @@ std::vector<double> audioOutputBlock(blockSize, 0.);
 std::vector<std::complex<double>> cqtDomainBuffers[OctaveNumber][BinsPerOctave];
 
 Cqt::SlidingCqt<BinsPerOctave, OctaveNumber, Windowing> cqt;
-cqt.initFs(samplerate, blockSize);
+cqt.init(samplerate, blockSize);
 
 for(unsigned i_octave = 0u; i_octave < OctaveNumber; i_octave++)
 {
