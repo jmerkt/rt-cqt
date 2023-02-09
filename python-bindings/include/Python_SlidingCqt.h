@@ -39,9 +39,9 @@ namespace Cqt
         {
             std::vector<std::complex<double>> valueVector(B, {0., 0.});
             CircularBuffer<std::complex<double>>* octaveCqtBuffer = this->getOctaveCqtBuffer(octave);
-            for(int t = 0; t < B; t++)
+            for(int i_tone = 0; i_tone < B; i_tone++)
             {
-                valueVector[t] = octaveCqtBuffer[t].pullDelaySample(0);
+                valueVector[i_tone] = octaveCqtBuffer[i_tone].pullDelaySample(0);
             }
             return valueVector;
         };
