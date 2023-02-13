@@ -91,7 +91,8 @@ private:
     std::vector<std::complex<double>> mInputFtBuffer[OctaveNumber][B];
 
     std::vector<std::complex<double>> mOutputFtBuffer[OctaveNumber][B];
-    std::vector<double> mOutputSamplesTonesBuffer[OctaveNumber][B];
+    std::vector<std::complex<double>> mOutputSamplesTonesBuffer[OctaveNumber][B];
+    std::vector<std::complex<double>> mOutputSamplesBufferCplx[OctaveNumber];
     std::vector<double> mOutputSamplesBuffer[OctaveNumber];
 };
 
@@ -164,6 +165,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
         const size_t octaveBlockSize = mBlockSizes[i_octave];
 
         mInputSamplesBuffer[i_octave].resize(octaveBlockSize, 0.);
+        mOutputSamplesBufferCplx[i_octave].resize(octaveBlockSize, {0., 0.});
         mOutputSamplesBuffer[i_octave].resize(octaveBlockSize, 0.);
         for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
@@ -171,7 +173,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
             mInputFtBuffer[i_octave][i_tone].resize(octaveBlockSize, {0., 0.});
 
             mOutputFtBuffer[i_octave][i_tone].resize(octaveBlockSize, {0., 0.});  
-            mOutputSamplesTonesBuffer[i_octave][i_tone].resize(octaveBlockSize, 0.);
+            mOutputSamplesTonesBuffer[i_octave][i_tone].resize(octaveBlockSize, {0., 0.});
         }
     }
 };
@@ -278,13 +280,14 @@ inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blo
             {
                 const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][0];
                 const std::complex<double> Ft = mOutputFtBuffer[i_octave][i_tone][i_sample];
-                mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample] = (Ft * expQNk).real();
+                mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample] = Ft * expQNk;
             }
-            mOutputSamplesBuffer[i_octave][i_sample] = 0.;
+            mOutputSamplesBufferCplx[i_octave][i_sample] = {0., 0.};
             for (size_t i_tone = 0; i_tone < B; i_tone++) 
             {
-                mOutputSamplesBuffer[i_octave][i_sample] += mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample];
+                mOutputSamplesBufferCplx[i_octave][i_sample] += mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample];
             }
+            mOutputSamplesBuffer[i_octave][i_sample] = mOutputSamplesBufferCplx[i_octave][i_sample].real();
         }
         outputBuffer->pushBlock(mOutputSamplesBuffer[i_octave].data(), nOctaveSamples);
     }
