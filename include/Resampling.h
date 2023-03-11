@@ -194,7 +194,7 @@ inline FloatType HalfBandLowpass<FloatType, AllpassNumber>::processSampleDown(co
 			mDirectPathInput = mDirectPathFilters[i].processSample(mDirectPathInput);
 			mDelayPathStorage = mDelayPathFilters[i].processSample(mDelayPathStorage);
 		}
-		output = (mDirectPathInput + mDelayPathStorage) * 0.5;
+		output = (mDirectPathInput + mDelayPathStorage) * static_cast<FloatType>(0.5);
 	}
 	mDelayPathStorage = mDelayPathInput;
 	isSampleRet = mIsSample;
@@ -204,7 +204,7 @@ inline FloatType HalfBandLowpass<FloatType, AllpassNumber>::processSampleDown(co
 	
 template <typename FloatType, size_t AllpassNumber>
 inline FloatType HalfBandLowpass<FloatType, AllpassNumber>::processSampleUp(const FloatType sample) {
-	FloatType output = 0;
+	FloatType output = static_cast<FloatType>(0.0);
 	if (mIsSample) 
 	{
 		mDirectPathInput = sample;
@@ -248,7 +248,7 @@ inline FloatType* HalfBandLowpass<FloatType, AllpassNumber>::processBlockDown(Fl
 		mDirectPathFilters[i].processBlock(mDirectPathBuffer.data(), mFilterBufferSize);
 		mDelayPathFilters[i].processBlock(mDelayPathBuffer.data(), mFilterBufferSize);
 	}
-	for (int i = 0; i < mTargetBlockSize;i++)
+	for (int i = 0; i < mTargetBlockSize; i++)
 	{
 		mOutputBlock[i] = static_cast<FloatType>(0.5) * (mDirectPathBuffer[i] + mDelayPathBuffer[i]);
 	}
@@ -506,7 +506,8 @@ inline void ResamplingHandler<FloatType, AllpassNumber>::init(const int powToExp
 
 template <typename FloatType, size_t AllpassNumber>
 inline FloatType ResamplingHandler<FloatType, AllpassNumber>::processSampleDown(FloatType sample, bool& isSampleRet) {
-	if (mPowTwoFactor > 0) {
+	if (mPowTwoFactor > 0) 
+	{
 		for (int i = 0; i < mPowTwoFactor; i++) 
 		{
 			mIsSample[i] = false;
@@ -533,7 +534,8 @@ inline FloatType ResamplingHandler<FloatType, AllpassNumber>::processSampleDown(
 
 template <typename FloatType, size_t AllpassNumber>
 inline FloatType ResamplingHandler<FloatType, AllpassNumber>::processSampleUp(FloatType sample) {
-	if (mPowTwoFactor > 0) {
+	if (mPowTwoFactor > 0) 
+	{
 		if (mIsSample[mPowTwoFactor - 1]) 
 		{
 			mUpsamplingStorage[mPowTwoFactor - 1] = sample;

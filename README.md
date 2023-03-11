@@ -43,7 +43,8 @@ submodules/pffft/pffft_double.c
 ```
 
 ## Sliding Constant-Q Transform
-While the implementation above is doing a FFT per octave and hop, the CQT can also be implemented in a sliding fashion, which corresponds to a hop size of 1. This is still under development, but the basic processing should work. The implementation roughly follows [Russell Bradford, John ffitch, Richard Dobson: SLIDING WITH A CONSTANT Q](https://purehost.bath.ac.uk/ws/portalfiles/portal/377255/constQ.pdf). Downsampling filterbanks are used to optimize processing time for lower octaves. 
+While the implementation above is doing a FFT per octave and hop, the CQT can also be implemented in a sliding fashion, which corresponds to a hop size of 1. This is still under development. The forward transform should work, but the backward transform is currently not working 100% as expected. 
+The implementation roughly follows [Russell Bradford, John ffitch, Richard Dobson: SLIDING WITH A CONSTANT Q](https://purehost.bath.ac.uk/ws/portalfiles/portal/377255/constQ.pdf). Downsampling filterbanks are used to optimize processing time for lower octaves. 
 Because there are no FFTs, the library is header-only without dependecies on pffft.
 
 

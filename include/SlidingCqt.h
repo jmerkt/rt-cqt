@@ -26,7 +26,7 @@ namespace Cqt
 
 using namespace std::complex_literals;
 
-template <size_t B, size_t OctaveNumber, bool Windowing = true>
+template <size_t B, size_t OctaveNumber, bool Windowing = false>
 class SlidingCqt
 {
 public:
@@ -61,10 +61,10 @@ private:
 
     ResamplingFilterbank<OctaveNumber> mFilterbank;
 
-    // delay lines / circular buffers for cqt stuff - do they need to be interpolating to match Nk more precicely?
+    // Do we need interpolating lines to match Nk more precicely?
     CircularBuffer<double> mDelayLines[OctaveNumber];
 
-    // precalculated exp stuff
+    // Pre-calculated exp stuff
     double mQ[3]{0., 0., 0.};
     std::complex<double> mExpQ[3]{0.+0.i, 0.+0.i, 0.+0.i};
     std::complex<double> mExpQNk[OctaveNumber][B][3];
@@ -78,10 +78,10 @@ private:
 
     size_t mSamplesToProcess[OctaveNumber];
 
-    // cqt data
+    // Cqt data
     CircularBuffer<std::complex<double>> mCqtData[OctaveNumber][B];
 
-    // windowing
+    // Windowing
     static constexpr double mWindowCoeffs[3] = {0.5, -0.25, -0.25};
     static constexpr double mQAdd[3] = {0., -1., 1};
 
@@ -91,7 +91,8 @@ private:
     std::vector<std::complex<double>> mInputFtBuffer[OctaveNumber][B];
 
     std::vector<std::complex<double>> mOutputFtBuffer[OctaveNumber][B];
-    std::vector<double> mOutputSamplesTonesBuffer[OctaveNumber][B];
+    std::vector<std::complex<double>> mOutputSamplesTonesBuffer[OctaveNumber][B];
+    std::vector<std::complex<double>> mOutputSamplesBufferCplx[OctaveNumber];
     std::vector<double> mOutputSamplesBuffer[OctaveNumber];
 };
 
@@ -164,6 +165,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
         const size_t octaveBlockSize = mBlockSizes[i_octave];
 
         mInputSamplesBuffer[i_octave].resize(octaveBlockSize, 0.);
+        mOutputSamplesBufferCplx[i_octave].resize(octaveBlockSize, {0., 0.});
         mOutputSamplesBuffer[i_octave].resize(octaveBlockSize, 0.);
         for(size_t i_tone = 0; i_tone < B; i_tone++)
         {
@@ -171,7 +173,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::init(const double samplerate
             mInputFtBuffer[i_octave][i_tone].resize(octaveBlockSize, {0., 0.});
 
             mOutputFtBuffer[i_octave][i_tone].resize(octaveBlockSize, {0., 0.});  
-            mOutputSamplesTonesBuffer[i_octave][i_tone].resize(octaveBlockSize, 0.);
+            mOutputSamplesTonesBuffer[i_octave][i_tone].resize(octaveBlockSize, {0., 0.});
         }
     }
 };
@@ -184,7 +186,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::setConcertPitch(double conce
 };
 
 template <size_t B, size_t OctaveNumber, bool Windowing>
-inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize) // TODO: Bug here!
+inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const data, const int blockSize) 
 {
     // check for new kernels
 	if (mNewKernels.load())
@@ -199,7 +201,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
     // process all cqt sample based on numbers pushed into stage buffers
     for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
-        const BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
+        BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
         const size_t nOctaveSamples = inputBuffer->getWriteReadDistance();
         mSamplesToProcess[i_octave] = nOctaveSamples;
 
@@ -264,7 +266,6 @@ inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blo
 {
     for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
-        const BufferPtr outputBuffer = mFilterbank.getStageOutputBuffer(i_octave);
         const size_t nOctaveSamples = mSamplesToProcess[i_octave];
 
         for (size_t i_tone = 0; i_tone < B; i_tone++) 
@@ -278,14 +279,17 @@ inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blo
             {
                 const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][0];
                 const std::complex<double> Ft = mOutputFtBuffer[i_octave][i_tone][i_sample];
-                mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample] = (Ft * expQNk).real();
+                mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample] = Ft * expQNk;
             }
-            mOutputSamplesBuffer[i_octave][i_sample] = 0.;
+            mOutputSamplesBufferCplx[i_octave][i_sample] = {0., 0.};
             for (size_t i_tone = 0; i_tone < B; i_tone++) 
             {
-                mOutputSamplesBuffer[i_octave][i_sample] += mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample];
+                mOutputSamplesBufferCplx[i_octave][i_sample] += mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample];
             }
+            mOutputSamplesBuffer[i_octave][i_sample] = mOutputSamplesBufferCplx[i_octave][i_sample].real();
         }
+
+        BufferPtr outputBuffer = mFilterbank.getStageOutputBuffer(i_octave);
         outputBuffer->pushBlock(mOutputSamplesBuffer[i_octave].data(), nOctaveSamples);
     }
 	return mFilterbank.outputBlock(blockSize);
