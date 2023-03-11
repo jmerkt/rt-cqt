@@ -17,8 +17,8 @@
 
 namespace Cqt
 {
-    template <int B, int OctaveNumber>
-    class Python_SlidingCqt : public SlidingCqt<B, OctaveNumber>
+    template <int B, int OctaveNumber, bool Windowing>
+    class Python_SlidingCqt : public SlidingCqt<B, OctaveNumber, Windowing>
     {
     public:
 
@@ -42,6 +42,17 @@ namespace Cqt
             for(int i_tone = 0; i_tone < B; i_tone++)
             {
                 valueVector[i_tone] = octaveCqtBuffer[i_tone].pullDelaySample(0);
+            }
+            return valueVector;
+        };
+
+        std::vector<double> Python_getOctaveBinFreqs(const int octave)
+        {
+            std::vector<double> valueVector(B, 0.);
+            const double* octaveBinFreqs = this->getOctaveBinFreqs(octave);
+            for(int i_tone = 0; i_tone < B; i_tone++)
+            {
+                valueVector[i_tone] = octaveBinFreqs[i_tone];
             }
             return valueVector;
         };

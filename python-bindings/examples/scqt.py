@@ -20,14 +20,20 @@ n_octaves: int = 9
 n_bins: int = bins_per_octave * n_octaves
 block_size: int = 512
 sample_rate: float = 48000.
-n_blocks: int = 2000
+n_blocks: int = 1000
 
 cqt_instance = cqt.SlidingCqt24()
 cqt_instance.init(sample_rate, block_size)
 
+# Get bin frequencies and print
+bin_freqs = np.zeros((n_octaves, bins_per_octave), np.float64)
+for i_octave in range(n_octaves):
+    bin_freqs[i_octave, :] = np.flip(cqt_instance.getOctaveBinFreqs(i_octave))
+print(bin_freqs)
+
 # Synthesize single sine tone
 time_data = np.linspace(0.0, block_size / sample_rate * n_blocks, block_size * n_blocks)
-f0: float = 440.0
+f0: float = 493.883  
 audio_input_data = np.sin(2.0 * np.pi * time_data * f0, dtype=np.float64)
 
 # Evaluate using cqt
@@ -44,7 +50,7 @@ for i_block in range(n_blocks):
     
 # Synthesize exponential sine sweep
 f0 = 30.0
-f1 = 16000.0
+f1 = 17000.0
 audio_input_data_chirp = chirp(time_data, f0=f0, t1=time_data[-1], f1=f1, method='logarithmic') 
 
 cqt_magnitudes_chirp = np.zeros((n_blocks, n_bins), np.float32)

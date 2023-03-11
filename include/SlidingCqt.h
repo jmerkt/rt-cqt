@@ -26,7 +26,7 @@ namespace Cqt
 
 using namespace std::complex_literals;
 
-template <size_t B, size_t OctaveNumber, bool Windowing = true>
+template <size_t B, size_t OctaveNumber, bool Windowing = false>
 class SlidingCqt
 {
 public:
@@ -201,7 +201,7 @@ inline void SlidingCqt<B, OctaveNumber, Windowing>::inputBlock(double* const dat
     // process all cqt sample based on numbers pushed into stage buffers
     for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
-        const BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
+        BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
         const size_t nOctaveSamples = inputBuffer->getWriteReadDistance();
         mSamplesToProcess[i_octave] = nOctaveSamples;
 
@@ -266,7 +266,6 @@ inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blo
 {
     for(size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
     {
-        const BufferPtr outputBuffer = mFilterbank.getStageOutputBuffer(i_octave);
         const size_t nOctaveSamples = mSamplesToProcess[i_octave];
 
         for (size_t i_tone = 0; i_tone < B; i_tone++) 
@@ -289,6 +288,8 @@ inline double* SlidingCqt<B, OctaveNumber, Windowing>::outputBlock(const int blo
             }
             mOutputSamplesBuffer[i_octave][i_sample] = mOutputSamplesBufferCplx[i_octave][i_sample].real();
         }
+
+        BufferPtr outputBuffer = mFilterbank.getStageOutputBuffer(i_octave);
         outputBuffer->pushBlock(mOutputSamplesBuffer[i_octave].data(), nOctaveSamples);
     }
 	return mFilterbank.outputBlock(blockSize);

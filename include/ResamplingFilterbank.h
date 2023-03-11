@@ -27,6 +27,9 @@ namespace Cqt
 
 typedef CircularBuffer<double>* BufferPtr;
 
+constexpr double FilterTransitionBandwidth{ 0.1 };
+constexpr unsigned AllpassNumber{ 3 };
+
 template<int StageNumber>
 class ResamplingFilterbank
 {
@@ -44,10 +47,10 @@ public:
 	BufferPtr getStageInputBuffer(const int stage) { return &mStageInputBuffers[stage]; };
 	BufferPtr getStageOutputBuffer(const int stage) { return &mStageOutputBuffers[stage]; };
 	int getOriginDownsampling() { return mOriginDownsampling; };
-protected:
-	ResamplingHandler<double, 3> mInputResamplingHandler;
-	HalfBandLowpass<double, 3> mDownsamplingFilters[StageNumber - 1];
-	HalfBandLowpass<double, 3> mUpsamplingFilters[StageNumber - 1];
+private:
+	ResamplingHandler<double, AllpassNumber> mInputResamplingHandler;
+	HalfBandLowpass<double, AllpassNumber> mDownsamplingFilters[StageNumber - 1];
+	HalfBandLowpass<double, AllpassNumber> mUpsamplingFilters[StageNumber - 1];
 	CircularBuffer<double> mStageInputBuffers[StageNumber];
 	CircularBuffer<double> mStageOutputBuffers[StageNumber];
 
@@ -139,13 +142,13 @@ inline void ResamplingFilterbank<StageNumber>::init(const double samplerate, con
 	{
 		if (stage < mBlockFilterNumber)
 		{
-			mDownsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage), true, false, 0.02);
-			mUpsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage + 1), false, false, 0.02);
+			mDownsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage), true, false, FilterTransitionBandwidth);
+			mUpsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage + 1), false, false, FilterTransitionBandwidth);
 		}
 		else
 		{
-			mDownsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage), true, true, 0.02);
-			mUpsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage + 1), false, true, 0.02);
+			mDownsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage), true, true, FilterTransitionBandwidth);
+			mUpsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage + 1), false, true, FilterTransitionBandwidth);
 		}
 	}
 	// buffers for samplebased / block based intermediate processing
