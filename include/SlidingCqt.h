@@ -26,28 +26,46 @@ namespace Cqt
 
 using namespace std::complex_literals;
 
+class SlidingCqtBase
+{
+public:
+    SlidingCqtBase() = default;
+    ~SlidingCqtBase() = default;
+
+    virtual void init(const double samplerate, const int blockSize) = 0;
+    virtual void setConcertPitch(double concertPitch) = 0;
+    virtual inline void recalculateKernels() = 0;
+    virtual void inputBlock(double* const data, const int blockSize) = 0;
+    virtual double* outputBlock(const int blockSize) = 0;
+    virtual inline CircularBuffer<std::complex<double>>* getOctaveCqtBuffer(const int octave) = 0;
+    virtual inline size_t getSamplesToProcess(const int octave) = 0;
+    virtual inline double getOctaveSampleRate(const int octave) = 0;
+    virtual inline int getOctaveBlockSize(const int octave) = 0;
+    virtual inline double* getOctaveBinFreqs(const int octave) = 0;
+};
+
 template <size_t B, size_t OctaveNumber, bool Windowing = false>
-class SlidingCqt
+class SlidingCqt : public SlidingCqtBase
 {
 public:
     SlidingCqt();
     ~SlidingCqt() = default;
 
-    void init(const double samplerate, const int blockSize);
+    void init(const double samplerate, const int blockSize) override;
 
-    void setConcertPitch(double concertPitch);
-	inline void recalculateKernels() { mNewKernels.store(true); };
+    void setConcertPitch(double concertPitch) override;
+	inline void recalculateKernels() override { mNewKernels.store(true); };
 
-    void inputBlock(double* const data, const int blockSize);
-	double* outputBlock(const int blockSize);
+    void inputBlock(double* const data, const int blockSize) override;
+	double* outputBlock(const int blockSize) override;
 
-    inline CircularBuffer<std::complex<double>>* getOctaveCqtBuffer(const int octave) { return &mCqtData[octave][0]; };
-    inline size_t getSamplesToProcess(const int octave){return mSamplesToProcess[octave];};
+    inline CircularBuffer<std::complex<double>>* getOctaveCqtBuffer(const int octave) override { return &mCqtData[octave][0]; };
+    inline size_t getSamplesToProcess(const int octave) override {return mSamplesToProcess[octave];};
 
-    inline double getOctaveSampleRate(const int octave) { return mSampleRates[octave]; };
-    inline int getOctaveBlockSize(const int octave) { return mBlockSizes[octave]; };
+    inline double getOctaveSampleRate(const int octave) override { return mSampleRates[octave]; };
+    inline int getOctaveBlockSize(const int octave) override { return mBlockSizes[octave]; };
     
-    inline double* getOctaveBinFreqs(const int octave){ return &mBinFreqs[octave][0]; };
+    inline double* getOctaveBinFreqs(const int octave) override { return &mBinFreqs[octave][0]; };
 
 private:
     void computeKernels();
