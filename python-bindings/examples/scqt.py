@@ -18,9 +18,9 @@ import rtcqt as cqt
 bins_per_octave: int = 24
 n_octaves: int = 9
 n_bins: int = bins_per_octave * n_octaves
-block_size: int = 512
+block_size: int = 64
 sample_rate: float = 48000.
-n_blocks: int = 1000
+n_blocks: int = 5000
 
 cqt_instance = cqt.SlidingCqt24()
 cqt_instance.init(sample_rate, block_size)
