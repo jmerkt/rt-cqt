@@ -8,18 +8,21 @@ Created on Thu Feb  9 20:32:31 2023
 
 import sys
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.signal import chirp
 
 sys.path.insert(1, './../build')
 import rtcqt as cqt
 
+# matplotlib.use('Qt5Agg')
+
 bins_per_octave: int = 24
 n_octaves: int = 9
 n_bins: int = bins_per_octave * n_octaves
 block_size: int = 64
 sample_rate: float = 48000.
-n_blocks: int = 5000
+n_blocks: int = 500
 
 cqt_instance = cqt.SlidingCqt24()
 cqt_instance.init(sample_rate, block_size)
@@ -42,7 +45,7 @@ for i_block in range(n_blocks):
     cqt_instance.inputBlock(audio_input_data[i_block * block_size: (i_block + 1) * block_size], block_size)
     for i_octave in range(n_octaves):
         octave_data = cqt_instance.getOctaveValues(i_octave) 
-        cqt_magnitudes[i_block, i_octave * bins_per_octave : (i_octave + 1) * bins_per_octave] = np.flip(np.abs(octave_data))
+        cqt_magnitudes[i_block, i_octave * bins_per_octave: (i_octave + 1) * bins_per_octave] = np.flip(np.abs(octave_data))
     output_block = cqt_instance.outputBlock(block_size)
     audio_output_data[i_block * block_size: (i_block + 1) * block_size] = output_block
     
@@ -58,14 +61,14 @@ for i_block in range(n_blocks):
     cqt_instance.inputBlock(audio_input_data_chirp[i_block * block_size: (i_block + 1) * block_size], block_size)
     for i_octave in range(n_octaves):
         octave_data = cqt_instance.getOctaveValues(i_octave) 
-        cqt_magnitudes_chirp[i_block, i_octave * bins_per_octave : (i_octave + 1) * bins_per_octave] = np.flip(np.abs(octave_data))
+        cqt_magnitudes_chirp[i_block, i_octave * bins_per_octave: (i_octave + 1) * bins_per_octave] = np.flip(np.abs(octave_data))
     output_block = cqt_instance.outputBlock(block_size)
     audio_output_data_chirp[i_block * block_size: (i_block + 1) * block_size] = output_block
     
 
     
 # Plot result
-cqt_magnitudes  = cqt_magnitudes.transpose()
+cqt_magnitudes = cqt_magnitudes.transpose()
 cqt_magnitudes_chirp = cqt_magnitudes_chirp.transpose()
 
 fig, ax = plt.subplots(2, 2)
@@ -93,7 +96,7 @@ ax[1, 1].set_xlabel('time')
 ax[1, 1].set_ylabel('amplitude')
 ax[1, 1].legend()
 
-fig.show()
+plt.show()
 
 
 # TODO: further evaluation with not just block-resampled scqt results, but actual samples on octave rates
