@@ -7,12 +7,11 @@ Created on Thu Feb  9 20:32:31 2023
 """
 
 import sys
-sys.path.insert(1, './../build')
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import chirp
 
+sys.path.insert(1, './../build')
 import rtcqt as cqt
 
 bins_per_octave: int = 24
@@ -93,6 +92,8 @@ ax[1, 1].plot(time_data, audio_output_data_chirp, label='output')
 ax[1, 1].set_xlabel('time')
 ax[1, 1].set_ylabel('amplitude')
 ax[1, 1].legend()
+
+fig.show()
 
 
 # TODO: further evaluation with not just block-resampled scqt results, but actual samples on octave rates
