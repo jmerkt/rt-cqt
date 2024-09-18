@@ -48,7 +48,7 @@ namespace Cqt
 	{
 		int sample{0}; // Position in actual block
 		int octave{0};
-		int delayOctaveRate{0}; // Delay of the transformation in samplesin the corresponding octave sample buffer
+		int delayOctaveRate{0}; // Delay of the transformation in samples in the corresponding octave sample buffer
 	};
 
 	/*
