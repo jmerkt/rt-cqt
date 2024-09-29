@@ -28,7 +28,7 @@ auto schedule = cqt.getCqtSchedule();
 for(const auto& s : schedule)
 {
   cqt.cqt(s);
-  auto cqtDomainBuffer = cqt.getOctaveCqtBuffer(s.octave); // the data could now be manipulated in cqt domain
+  auto cqtDomainBuffer = cqt.getOctaveCqtBuffer(s.octave()); // the data could now be manipulated in cqt domain
   cqt.icqt(s);
 }
 auto cqtAudioBlock = cqt.outputBlock(audioInputBlock.size());
