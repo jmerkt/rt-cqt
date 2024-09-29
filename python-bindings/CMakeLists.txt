@@ -11,7 +11,6 @@ target_compile_definitions(rtcqt PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
 
 # rt-cqt source files
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
-#set(CHROMA_LIB_DIR D:/VST_Plugins/lib)
 
 set(SOURCE_FILES
 	${ROOT_DIR}/submodules/pffft/pffft.c

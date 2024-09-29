@@ -10,7 +10,6 @@
 
 #pragma once
 
-
 #include <pybind11/numpy.h>
 
 #include "../../include/SlidingCqt.h"
@@ -21,10 +20,9 @@ namespace Cqt
     class Python_SlidingCqt : public SlidingCqt<B, OctaveNumber, Windowing>
     {
     public:
-
-        void Python_inputBlock(std::vector<double>& data, const int blockSize) 
-        { 
-            this->inputBlock(data.data(), blockSize); 
+        void Python_inputBlock(std::vector<double> &data, const int blockSize)
+        {
+            this->inputBlock(data.data(), blockSize);
         };
 
         std::vector<double> Python_outputBlock(const int blockSize)
@@ -38,8 +36,8 @@ namespace Cqt
         std::vector<std::complex<double>> Python_getOctaveValues(const int octave)
         {
             std::vector<std::complex<double>> valueVector(B, {0., 0.});
-            CircularBuffer<std::complex<double>>* octaveCqtBuffer = this->getOctaveCqtBuffer(octave);
-            for(int i_tone = 0; i_tone < B; i_tone++)
+            audio_utils::CircularBuffer<std::complex<double>> *octaveCqtBuffer = this->getOctaveCqtBuffer(octave);
+            for (int i_tone = 0; i_tone < B; i_tone++)
             {
                 valueVector[i_tone] = octaveCqtBuffer[i_tone].pullDelaySample(0);
             }
@@ -49,13 +47,12 @@ namespace Cqt
         std::vector<double> Python_getOctaveBinFreqs(const int octave)
         {
             std::vector<double> valueVector(B, 0.);
-            const double* octaveBinFreqs = this->getOctaveBinFreqs(octave);
-            for(int i_tone = 0; i_tone < B; i_tone++)
+            const double *octaveBinFreqs = this->getOctaveBinFreqs(octave);
+            for (int i_tone = 0; i_tone < B; i_tone++)
             {
                 valueVector[i_tone] = octaveBinFreqs[i_tone];
             }
             return valueVector;
         };
-
     };
 }
