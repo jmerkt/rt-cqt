@@ -24,7 +24,11 @@ PYBIND11_MODULE(rtcqt, m)
 
     )pbdoc";
 
-    PYBIND11_NUMPY_DTYPE(Cqt::ScheduleElement, sample, octave, delayOctaveRate);
+    py::class_<Cqt::ScheduleElement>(m, "ScheduleElement")
+        .def(py::init<const int, const int, const int>())
+        .def("sample", &Cqt::ScheduleElement::sample)
+        .def("octave", &Cqt::ScheduleElement::octave)
+        .def("delayOctaveRate", &Cqt::ScheduleElement::delayOctaveRate);
 
     py::class_<Cqt::Python_ConstantQTransform<12, 9>>(m, "Cqt12")
         .def(py::init<>())
@@ -32,9 +36,9 @@ PYBIND11_MODULE(rtcqt, m)
         .def("initFs", &Cqt::Python_ConstantQTransform<12, 9>::initFs)
         .def("inputBlock", &Cqt::Python_ConstantQTransform<12, 9>::Python_inputBlock)
         .def("outputBlock", &Cqt::Python_ConstantQTransform<12, 9>::Python_outputBlock)
-        .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<12, 9>::Python_getCqtSchedule)
-        .def("cqt", &Cqt::Python_ConstantQTransform<12, 9>::Python_cqt)
-        .def("icqt", &Cqt::Python_ConstantQTransform<12, 9>::Python_icqt)
+        .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<12, 9>::getCqtSchedule)
+        .def("cqt", &Cqt::Python_ConstantQTransform<12, 9>::cqt)
+        .def("icqt", &Cqt::Python_ConstantQTransform<12, 9>::icqt)
         .def("getOctaveCqtBuffer", &Cqt::Python_ConstantQTransform<12, 9>::getOctaveCqtBuffer);
 
     py::class_<Cqt::Python_ConstantQTransform<24, 9>>(m, "Cqt24")
@@ -43,9 +47,9 @@ PYBIND11_MODULE(rtcqt, m)
         .def("initFs", &Cqt::Python_ConstantQTransform<24, 9>::initFs)
         .def("inputBlock", &Cqt::Python_ConstantQTransform<24, 9>::Python_inputBlock)
         .def("outputBlock", &Cqt::Python_ConstantQTransform<24, 9>::Python_outputBlock)
-        .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<24, 9>::Python_getCqtSchedule)
-        .def("cqt", &Cqt::Python_ConstantQTransform<24, 9>::Python_cqt)
-        .def("icqt", &Cqt::Python_ConstantQTransform<24, 9>::Python_icqt)
+        .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<24, 9>::getCqtSchedule)
+        .def("cqt", &Cqt::Python_ConstantQTransform<24, 9>::cqt)
+        .def("icqt", &Cqt::Python_ConstantQTransform<24, 9>::icqt)
         .def("getOctaveCqtBuffer", &Cqt::Python_ConstantQTransform<24, 9>::getOctaveCqtBuffer);
 
     py::class_<Cqt::Python_SlidingCqt<24, 9, false>>(m, "SlidingCqt24")

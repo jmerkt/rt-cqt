@@ -23,7 +23,7 @@ n_bins: int = bins_per_octave * n_octaves
 block_size: int = 64
 sample_rate: float = 48000.
 n_blocks: int = 5000
-cqt_hop_size = 256
+cqt_hop_size = 64
 
 cqt_instance = cqt.Cqt24()
 cqt_instance.init(cqt_hop_size)
@@ -55,10 +55,11 @@ audio_output = np.zeros(time_data.shape[0], np.float64)
 audio_output_sliding = np.zeros(time_data.shape[0], np.float64)
 for i_block in range(n_blocks):
     # "Standard" Cqt
-    cqt_instance.inputBlock(audio_input_data[i_block * block_size: (i_block + 1) * block_size], block_size)
+    cqt_instance.inputBlock(audio_input_data[i_block * block_size: (i_block + 1) * block_size])
     schedule = cqt_instance.getCqtSchedule()
-    for s in schedule.tolist():
-        print(s)
+    # print(schedule)
+    for s in schedule:
+        # print(s.sample(), s.octave(), s.delayOctaveRate())
         cqt_instance.cqt(s)
         cqt_instance.icqt(s)
     for i_octave in range(n_octaves):
@@ -76,6 +77,7 @@ for i_block in range(n_blocks):
 
 # Empty buffers
 for i_block in range(n_blocks):
+    cqt_instance.inputBlock(np.zeros(block_size))
     cqt_instance_sliding.inputBlock(np.zeros(block_size), block_size)
     output_block = cqt_instance_sliding.outputBlock(block_size)
     
@@ -96,22 +98,55 @@ for i_block in range(n_blocks):
 
     
 # Plot result
+cqt_magnitudes = cqt_magnitudes.transpose()
 cqt_magnitudes_sliding = cqt_magnitudes_sliding.transpose()
 cqt_magnitudes_sliding_chirp = cqt_magnitudes_sliding_chirp.transpose()
 
 # fft of input and output signals
 audio_input_f = np.fft.rfft(audio_input_data)
 audio_input_chirp_f = np.fft.rfft(audio_input_data_chirp)
-audio_output_f = np.fft.rfft(audio_output_sliding)
-audio_output_chirp_f = np.fft.rfft(audio_output_sliding_chirp)
 freq = np.fft.rfftfreq(audio_input_data.shape[-1]) * sample_rate
+
+audio_output_f = np.fft.rfft(audio_output)
+audio_output_sliding_f = np.fft.rfft(audio_output_sliding)
+audio_output_sliding_chirp_f = np.fft.rfft(audio_output_sliding_chirp)
 
 # averaged bin magnitudes
 bins = np.arange(0, n_bins)
-bin_magnitude_means = np.mean(cqt_magnitudes_sliding, axis=1)
-bin_magnitude_means_chirp = np.mean(cqt_magnitudes_sliding_chirp, axis=1)
+bin_magnitude_means = np.mean(cqt_magnitudes, axis=1)
+bin_magnitude_means_sliding = np.mean(cqt_magnitudes_sliding, axis=1)
+bin_magnitude_means_sliding_chirp = np.mean(cqt_magnitudes_sliding_chirp, axis=1)
 
+# Plot "standard"
+fig, ax = plt.subplots(4, 1)
+fig.suptitle("Cqt")
+ax[0].imshow(cqt_magnitudes, interpolation='bilinear')
+ax[0].set_aspect('auto')
+ax[0].set_title('Cqt magnitudes')
+ax[0].set_xlabel('i_block')
+ax[0].set_ylabel('i_bin')
+
+ax[1].plot(time_data, audio_input_data, label='input')
+ax[1].plot(time_data, audio_output, label='output')
+ax[1].set_xlabel('time in s')
+ax[1].set_ylabel('amplitude')
+ax[1].legend()
+
+ax[2].plot(freq, np.abs(audio_input_f))
+ax[2].plot(freq, np.abs(audio_output_f))
+ax[2].set_xlabel('frequency in Hz')
+ax[2].set_ylabel('magnitude')
+ax[2].set_xscale('log')
+ax[2].set_xlim(10, sample_rate/2)
+
+ax[3].plot(bin_magnitude_means)
+ax[3].set_xlabel('i_bin')
+ax[3].set_ylabel('mean magnitude')
+ax[3].invert_xaxis()
+
+# Plot sliding
 fig, ax = plt.subplots(4, 2)
+fig.suptitle("Sliding Cqt")
 ax[0, 0].imshow(cqt_magnitudes_sliding, interpolation='bilinear')
 ax[0, 0].set_aspect('auto')
 ax[0, 0].set_title('Cqt magnitudes')
@@ -137,9 +172,9 @@ ax[1, 1].set_ylabel('amplitude')
 ax[1, 1].legend()
 
 ax[2, 0].plot(freq, np.abs(audio_input_f))
-ax[2, 0].plot(freq, np.abs(audio_output_f))
+ax[2, 0].plot(freq, np.abs(audio_output_sliding_f))
 ax[2, 1].plot(freq, np.abs(audio_input_chirp_f))
-ax[2, 1].plot(freq, np.abs(audio_output_chirp_f))
+ax[2, 1].plot(freq, np.abs(audio_output_sliding_chirp_f))
 ax[2, 0].set_xlabel('frequency in Hz')
 ax[2, 0].set_ylabel('magnitude')
 ax[2, 1].set_xlabel('frequency in Hz')
@@ -149,8 +184,8 @@ ax[2, 0].set_xlim(10, sample_rate/2)
 ax[2, 1].set_xscale('log')
 ax[2, 1].set_xlim(10, sample_rate/2)
 
-ax[3, 0].plot(bin_magnitude_means)
-ax[3, 1].plot(bin_magnitude_means_chirp)
+ax[3, 0].plot(bin_magnitude_means_sliding)
+ax[3, 1].plot(bin_magnitude_means_sliding_chirp)
 ax[3, 0].set_xlabel('i_bin')
 ax[3, 1].set_xlabel('i_bin')
 ax[3, 0].set_ylabel('mean magnitude')

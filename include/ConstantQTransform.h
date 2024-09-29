@@ -44,11 +44,19 @@ namespace Cqt
 	/*
 	Structure to schedule transformation timings.
 	*/
-	struct ScheduleElement
+	class ScheduleElement
 	{
-		int sample{0}; // Position in actual block
-		int octave{0};
-		int delayOctaveRate{0}; // Delay of the transformation in samples in the corresponding octave sample buffer
+	public:
+		ScheduleElement(const int sample, const int octave, const int delayOctaveRate) : sample_(sample), octave_(octave), delayOctaveRate_(delayOctaveRate) {};
+		~ScheduleElement() = default;
+		int sample() const { return sample_; };
+		int octave() const { return octave_; };
+		int delayOctaveRate() const { return delayOctaveRate_; };
+
+	private:
+		int sample_{0}; // Position in actual block
+		int octave_{0};
+		int delayOctaveRate_{0}; // Delay of the transformation in samples in the corresponding octave sample buffer
 	};
 
 	/*
@@ -172,7 +180,7 @@ namespace Cqt
 	inline void TransformationHandler<B>::cqtTransform(const ScheduleElement schedule)
 	{
 		// collect the fft input data
-		mStageInputBuffer->pullDelayBlock(mFftInputBuffer.data(), static_cast<int>(Fft_Size) + schedule.delayOctaveRate - 1, static_cast<int>(Fft_Size));
+		mStageInputBuffer->pullDelayBlock(mFftInputBuffer.data(), static_cast<int>(Fft_Size) + schedule.delayOctaveRate() - 1, static_cast<int>(Fft_Size));
 		// apply time window
 		for (int i = 0; i < Fft_Size; i++)
 		{
@@ -231,13 +239,13 @@ namespace Cqt
 		mStageOutputBuffer->pullBlock(mOutputBuffer.data(), mStageOutputBuffer->getWriteReadDistance());
 		//// add new data
 		int count = 0;
-		for (int i = schedule.delayOctaveRate; i < (schedule.delayOctaveRate + Fft_Size); i++)
+		for (int i = schedule.delayOctaveRate(); i < (schedule.delayOctaveRate() + Fft_Size); i++)
 		{
 			mOutputBuffer[i] += mIfftOutputBuffer[count];
 			count++;
 		}
 		//// push new data
-		mStageOutputBuffer->pushBlock(mOutputBuffer.data(), Fft_Size + schedule.delayOctaveRate);
+		mStageOutputBuffer->pushBlock(mOutputBuffer.data(), Fft_Size + schedule.delayOctaveRate());
 	};
 
 	template <int B>
@@ -543,13 +551,13 @@ namespace Cqt
 	template <int B, int OctaveNumber>
 	inline void ConstantQTransform<B, OctaveNumber>::cqt(const ScheduleElement schedule)
 	{
-		mTransformationHandlers[schedule.octave].cqtTransform(schedule);
+		mTransformationHandlers[schedule.octave()].cqtTransform(schedule);
 	};
 
 	template <int B, int OctaveNumber>
 	inline void ConstantQTransform<B, OctaveNumber>::icqt(const ScheduleElement schedule)
 	{
-		mTransformationHandlers[schedule.octave].icqtTransform(schedule);
+		mTransformationHandlers[schedule.octave()].icqtTransform(schedule);
 	};
 
 };
