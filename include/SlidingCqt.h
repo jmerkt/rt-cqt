@@ -14,11 +14,6 @@
 #include "../submodules/audio-utils/include/Utils.h"
 #include <complex>
 
-/*
-TODO:
-- Optimization:
-    * Parallelization / Vectorization
-*/
 
 namespace Cqt
 {
@@ -60,18 +55,16 @@ namespace Cqt
 
         ResamplingFilterbank<OctaveNumber> mFilterbank;
 
-        // Do we need interpolating lines to match Nk more precicely?
         audio_utils::CircularBuffer<double> mDelayLines[OctaveNumber];
 
         // Pre-calculated exp stuff
-        double mQ[3]{0., 0., 0.};
-        std::complex<double> mExpQ[3]{0. + 0.i, 0. + 0.i, 0. + 0.i};
+        std::complex<double> mExpQ[OctaveNumber][B][3];
         std::complex<double> mExpQNk[OctaveNumber][B][3];
         std::complex<double> mFtPrev[OctaveNumber][B][3];
 
-        int mNk[OctaveNumber][B];
-        double mNkDouble[OctaveNumber][B];
-        double mOneDivNkDouble[OctaveNumber][B];
+        double mQ[OctaveNumber][B][3];
+        double mNk[OctaveNumber][B];
+        double mOneDivNk[OctaveNumber][B];
         double mBinFreqs[OctaveNumber][B];
 
         size_t mSamplesToProcess[OctaveNumber];
@@ -104,11 +97,12 @@ namespace Cqt
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
                 mBinFreqs[i_octave][i_tone] = 0.;
-                mNkDouble[i_octave][i_tone] = 0.;
-                mOneDivNkDouble[i_octave][i_tone] = 0.;
+                mNk[i_octave][i_tone] = 0.;
+                mOneDivNk[i_octave][i_tone] = 0.;
 
                 for (size_t i_window = 0; i_window < 3; i_window++)
                 {
+                    mQ[i_octave][i_tone][i_window] = 0.;
                     mExpQNk[i_octave][i_tone][i_window] = 0. + 0i;
                     mFtPrev[i_octave][i_tone][i_window] = 0. + 0.i;
                 }
@@ -134,7 +128,7 @@ namespace Cqt
             int maxNk = -1;
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
-                const int delaySize = mNk[i_octave][i_tone] + mBlockSizes[i_octave] + 1u;
+                const int delaySize = static_cast<int>(std::ceil(mNk[i_octave][i_tone])) + mBlockSizes[i_octave] + 1;
                 if (delaySize > maxNk)
                     maxNk = delaySize;
             }
@@ -198,34 +192,38 @@ namespace Cqt
         for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
         {
             BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
-            const size_t nOctaveSamples = inputBuffer->getWriteReadDistance();
+            const int nOctaveSamples = inputBuffer->getWriteReadDistance();
             mSamplesToProcess[i_octave] = nOctaveSamples;
+            if(nOctaveSamples <= 0)
+            {
+                continue;
+            }
 
             inputBuffer->pullBlock(mInputSamplesBuffer[i_octave].data(), nOctaveSamples);
             mDelayLines[i_octave].pushBlock(mInputSamplesBuffer[i_octave].data(), nOctaveSamples);
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
-                const int nk = mNk[i_octave][i_tone];
-                mDelayLines[i_octave].pullDelayBlock(mInputDelaySamplesBuffer[i_octave][i_tone].data(), nk + nOctaveSamples - 1, nOctaveSamples);
+                const double nk = mNk[i_octave][i_tone];
+                mDelayLines[i_octave].pullDelayBlock(mInputDelaySamplesBuffer[i_octave][i_tone].data(), static_cast<int>(nk) + nOctaveSamples - 1, nOctaveSamples);
             }
             for (size_t i_sample = 0; i_sample < nOctaveSamples; i_sample++)
             {
                 // #pragma omp simd
                 for (size_t i_tone = 0; i_tone < B; i_tone++)
                 {
-                    const double oneDivNkDouble = mOneDivNkDouble[i_octave][i_tone];
+                    const double oneDivNk = mOneDivNk[i_octave][i_tone];
                     const double delaySample = mInputDelaySamplesBuffer[i_octave][i_tone][i_sample];
 
                     const std::complex<double> delayCplx{delaySample, 0.};
 
                     if constexpr (Windowing == false)
                     {
-                        const std::complex<double> expQ = mExpQ[0];
+                        const std::complex<double> expQ = mExpQ[i_octave][i_tone][0];
                         const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][0];
                         const std::complex<double> FtPrev = mFtPrev[i_octave][i_tone][0];
                         const std::complex<double> expMInput = expQ * mInputSamplesBuffer[i_octave][i_sample];
 
-                        const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
+                        const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNk);
 
                         mFtPrev[i_octave][i_tone][0] = Ft;
                         mInputFtBuffer[i_octave][i_tone][i_sample] = Ft;
@@ -235,12 +233,12 @@ namespace Cqt
                         std::complex<double> FtSum = 0. + 0.i;
                         for (size_t i_window = 0; i_window < 3u; i_window++)
                         {
-                            const std::complex<double> expQ = mExpQ[i_window];
+                            const std::complex<double> expQ = mExpQ[i_octave][i_tone][i_window];
                             const std::complex<double> expQNk = mExpQNk[i_octave][i_tone][i_window];
                             const std::complex<double> FtPrev = mFtPrev[i_octave][i_tone][i_window];
                             const std::complex<double> expMInput = expQ * mInputSamplesBuffer[i_octave][i_sample];
 
-                            const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNkDouble);
+                            const std::complex<double> Ft = expQNk * (FtPrev + (expMInput - delayCplx) * oneDivNk);
 
                             mFtPrev[i_octave][i_tone][i_window] = Ft;
 
@@ -263,6 +261,10 @@ namespace Cqt
         for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
         {
             const size_t nOctaveSamples = mSamplesToProcess[i_octave];
+            if(nOctaveSamples <= 0)
+            {
+                continue;
+            }
 
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
@@ -293,24 +295,9 @@ namespace Cqt
     template <size_t B, size_t OctaveNumber, bool Windowing>
     inline void SlidingCqt<B, OctaveNumber, Windowing>::computeKernels()
     {
+        const double q_initial = 1. / (std::pow(2., 1. / static_cast<double>(B)) - 1.);
 
-        for (size_t i_window = 0; i_window < 3u; i_window++)
-        {
-            // Q
-            mQ[i_window] = 1. / (std::pow(2., 1. / static_cast<double>(B)) - 1.);
-            mQ[i_window] += mQAdd[i_window];
-
-            // exp multiplication
-            mExpQ[i_window] = std::exp(-1i * audio_utils::TwoPi<double>() * mQ[i_window]);
-        }
-
-        /*
-        https://en.wikipedia.org/wiki/Piano_key_frequencies
-        f(n) = 2^((n-49)/12) * mConcertPitch
-        Range in highest octave from n = [100, 111] ~ [8.37 kHz, 15.804 kHz]
-        */
-        const double fRef = std::pow(2., ((100. - 49.) / 12.)) * mConcertPitch;
-
+        const double fRef = computeReferenceFrequency(mConcertPitch);
         for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
         {
             // fs
@@ -318,17 +305,21 @@ namespace Cqt
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
                 // fk
-                const double fk = (fRef / std::pow(2., (i_octave + 1))) * std::pow(2., static_cast<double>(B + i_tone) / static_cast<double>(B));
+                const double fk = computeBinFrequency(fRef, B, i_octave, i_tone);
                 mBinFreqs[i_octave][i_tone] = fk;
                 // Nk
-                mNk[i_octave][i_tone] = static_cast<int>((fs / fk) * mQ[0]);
-                const double nkDouble = static_cast<double>(mNk[i_octave][i_tone]);
-                mNkDouble[i_octave][i_tone] = nkDouble;
-                mOneDivNkDouble[i_octave][i_tone] = 1. / nkDouble;
+                mNk[i_octave][i_tone] = std::floor((fs / fk) * q_initial);
+                mOneDivNk[i_octave][i_tone] = 1. / mNk[i_octave][i_tone];
 
                 for (size_t i_window = 0; i_window < 3u; i_window++)
                 {
-                    mExpQNk[i_octave][i_tone][i_window] = std::exp(1i * audio_utils::TwoPi<double>() * mQ[i_window] * mOneDivNkDouble[i_octave][i_tone]);
+                    // Q
+                    mQ[i_octave][i_tone][i_window] = mNk[i_octave][i_tone] * fk / fs;
+                    mQ[i_octave][i_tone][i_window] += mQAdd[i_window];
+
+                    // exp multiplication
+                    mExpQ[i_octave][i_tone][i_window] = std::exp(-1i * audio_utils::TwoPi<double>() * mQ[i_octave][i_tone][i_window]);
+                    mExpQNk[i_octave][i_tone][i_window] = std::exp(1i * audio_utils::TwoPi<double>() * mQ[i_octave][i_tone][i_window] * mOneDivNk[i_octave][i_tone]);
                 }
             }
         }
