@@ -44,9 +44,10 @@ time_data = np.linspace(0.0, block_size / sample_rate * n_blocks, block_size * n
 audio_input_data = np.zeros(time_data.shape[-1], dtype=np.float64)
 for octave in range(n_octaves):
     for bin in range(bins_per_octave):
-        f0 = bin_freqs[octave, bin]
-        scaling = 1. / float(n_bins)
-        audio_input_data += np.sin(2.0 * np.pi * time_data * f0, dtype=np.float64) * scaling
+        if bin == 0 or bin == 5:
+            f0 = bin_freqs[octave, bin]
+            scaling = 1. / float(n_bins)
+            audio_input_data += np.sin(2.0 * np.pi * time_data * f0, dtype=np.float64) * scaling
 
 # Evaluate using cqt
 cqt_magnitudes = np.zeros((n_blocks, n_bins), np.float32)

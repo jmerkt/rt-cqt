@@ -14,7 +14,6 @@
 #include "../submodules/audio-utils/include/Utils.h"
 #include <complex>
 
-
 namespace Cqt
 {
 
@@ -73,6 +72,7 @@ namespace Cqt
         audio_utils::CircularBuffer<std::complex<double>> mCqtData[OctaveNumber][B];
 
         // Windowing
+        static constexpr double mWindowEnergyLossCompensation{1.63};
         static constexpr double mWindowCoeffs[3] = {0.5, -0.25, -0.25};
         static constexpr double mQAdd[3] = {0., -1., 1};
 
@@ -194,7 +194,7 @@ namespace Cqt
             BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);
             const int nOctaveSamples = inputBuffer->getWriteReadDistance();
             mSamplesToProcess[i_octave] = nOctaveSamples;
-            if(nOctaveSamples <= 0)
+            if (nOctaveSamples <= 0)
             {
                 continue;
             }
@@ -244,7 +244,7 @@ namespace Cqt
 
                             FtSum += mWindowCoeffs[i_window] * Ft;
                         }
-                        mInputFtBuffer[i_octave][i_tone][i_sample] = FtSum;
+                        mInputFtBuffer[i_octave][i_tone][i_sample] = FtSum * mWindowEnergyLossCompensation;
                     }
                 }
             }
@@ -261,7 +261,7 @@ namespace Cqt
         for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
         {
             const size_t nOctaveSamples = mSamplesToProcess[i_octave];
-            if(nOctaveSamples <= 0)
+            if (nOctaveSamples <= 0)
             {
                 continue;
             }
@@ -283,6 +283,10 @@ namespace Cqt
                 for (size_t i_tone = 0; i_tone < B; i_tone++)
                 {
                     mOutputSamplesBuffer[i_octave][i_sample] += mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample];
+                }
+                if constexpr (Windowing)
+                {
+                    mOutputSamplesBuffer[i_octave][i_sample] *= mWindowEnergyLossCompensation;
                 }
             }
 
