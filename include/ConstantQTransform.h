@@ -18,6 +18,7 @@
 
 #include "ResamplingFilterbank.h"
 #include "../submodules/audio-utils/include/Utils.h"
+#include "Util.h"
 #include <atomic>
 #include <memory>
 
@@ -437,17 +438,12 @@ namespace Cqt
 	template <int B, int OctaveNumber>
 	inline void ConstantQTransform<B, OctaveNumber>::initKernelFreqs()
 	{
-		/*
-		https://en.wikipedia.org/wiki/Piano_key_frequencies
-		f(n) = 2^((n-49)/12) * mConcertPitch
-		Range in highest octave from n = [100, 111] ~ [8.37 kHz, 15.804 kHz]
-		*/
-		const double fRef = std::pow(2., ((100. - 49.) / 12.)) * mConcertPitch;
+		const double fRef = computeReferenceFrequency(mConcertPitch);
 		for (int octave = 0; octave < OctaveNumber; octave++)
 		{
 			for (int tone = 0; tone < B; tone++)
 			{
-				mKernelFreqs[octave][tone] = (fRef / std::pow(2., (octave + 1))) * std::pow(2., static_cast<double>(B + tone) / static_cast<double>(B));
+				mKernelFreqs[octave][tone] = computeBinFrequency(fRef, B, octave, tone);
 				mKernelFreqsInv[octave][tone] = mKernelFreqs[octave][tone];
 			}
 		}

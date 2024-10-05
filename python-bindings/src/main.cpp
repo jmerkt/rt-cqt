@@ -11,6 +11,8 @@
 
 namespace py = pybind11;
 
+static constexpr bool use_windowing{true};
+
 PYBIND11_MODULE(rtcqt, m)
 {
     m.doc() = R"pbdoc(
@@ -52,21 +54,21 @@ PYBIND11_MODULE(rtcqt, m)
         .def("icqt", &Cqt::Python_ConstantQTransform<24, 9>::icqt)
         .def("getOctaveCqtBuffer", &Cqt::Python_ConstantQTransform<24, 9>::getOctaveCqtBuffer);
 
-    py::class_<Cqt::Python_SlidingCqt<24, 9, false>>(m, "SlidingCqt24")
+    py::class_<Cqt::Python_SlidingCqt<24, 9, use_windowing>>(m, "SlidingCqt24")
         .def(py::init<>())
-        .def("init", &Cqt::Python_SlidingCqt<24, 9, false>::init)
-        .def("inputBlock", &Cqt::Python_SlidingCqt<24, 9, false>::Python_inputBlock)
-        .def("outputBlock", &Cqt::Python_SlidingCqt<24, 9, false>::Python_outputBlock)
-        .def("getOctaveValues", &Cqt::Python_SlidingCqt<24, 9, false>::Python_getOctaveValues)
-        .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<24, 9, false>::Python_getOctaveBinFreqs);
+        .def("init", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::init)
+        .def("inputBlock", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::Python_inputBlock)
+        .def("outputBlock", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::Python_outputBlock)
+        .def("getOctaveValues", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::Python_getOctaveValues)
+        .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::Python_getOctaveBinFreqs);
 
-    py::class_<Cqt::Python_SlidingCqt<12, 9, false>>(m, "SlidingCqt12")
+    py::class_<Cqt::Python_SlidingCqt<12, 9, use_windowing>>(m, "SlidingCqt12")
         .def(py::init<>())
-        .def("init", &Cqt::Python_SlidingCqt<12, 9, false>::init)
-        .def("inputBlock", &Cqt::Python_SlidingCqt<12, 9, false>::Python_inputBlock)
-        .def("outputBlock", &Cqt::Python_SlidingCqt<12, 9, false>::Python_outputBlock)
-        .def("getOctaveValues", &Cqt::Python_SlidingCqt<12, 9, false>::Python_getOctaveValues)
-        .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<12, 9, false>::Python_getOctaveBinFreqs);
+        .def("init", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::init)
+        .def("inputBlock", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_inputBlock)
+        .def("outputBlock", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_outputBlock)
+        .def("getOctaveValues", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_getOctaveValues)
+        .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_getOctaveBinFreqs);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
