@@ -20,8 +20,8 @@ submodules/pffft/pffft_double.c
 ```
 
 ## Sliding Constant-Q Transform
-While the regular Constant-Q Transform above is doing a FFT per octave and hop, the CQT can also be implemented in a sliding fashion, which corresponds to a hop size of 1.
-The implementation roughly follows [Russell Bradford, John ffitch, Richard Dobson: SLIDING WITH A CONSTANT Q](https://purehost.bath.ac.uk/ws/portalfiles/portal/377255/constQ.pdf). Because there are no FFTs, the library is header-only without dependecies on pffft.
+While the regular Constant-Q Transform performs an FFT for each octave and hop, the CQT can also be implemented in a sliding manner, where the hop size is effectively reduced to 1 sample.
+The implementation follows [Russell Bradford, John ffitch, Richard Dobson: SLIDING WITH A CONSTANT Q](https://purehost.bath.ac.uk/ws/portalfiles/portal/377255/constQ.pdf). Since this method does not rely on FFTs, the implementation remains lightweight, header-only, and free from external dependencies like pffft.
 
 An example can be found in `examples/scqt.cpp`.
 
