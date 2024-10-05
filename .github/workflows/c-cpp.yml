@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: "Create build directory and run CMake"
       run: cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
     - name: "Build Project" 
