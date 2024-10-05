@@ -33,3 +33,6 @@
 
 # Python
 *.idea
+
+# Cmake build folders
+*build

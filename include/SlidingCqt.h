@@ -10,9 +10,12 @@
 
 #pragma once
 
+#include <complex>
+#include <atomic>
+
 #include "ResamplingFilterbank.h"
 #include "../submodules/audio-utils/include/Utils.h"
-#include <complex>
+#include "Util.h"
 
 namespace Cqt
 {
