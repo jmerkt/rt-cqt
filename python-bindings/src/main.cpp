@@ -13,13 +13,13 @@ namespace py = pybind11;
 
 static constexpr bool use_windowing{true};
 
-PYBIND11_MODULE(rtcqt, m)
+PYBIND11_MODULE(prtcqt, m)
 {
     m.doc() = R"pbdoc(
         Pybind11 example plugin
         -----------------------
 
-        .. currentmodule:: rtcqt
+        .. currentmodule:: prtcqt
 
         .. autosummary::
            :toctree: _generate
