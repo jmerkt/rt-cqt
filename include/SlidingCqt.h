@@ -39,6 +39,8 @@ namespace Cqt
 
         inline audio_utils::CircularBuffer<std::complex<double>> *getOctaveCqtBuffer(const int octave) { return &mCqtData[octave][0]; };
         inline size_t getSamplesToProcess(const int octave) { return mSamplesToProcess[octave]; };
+        inline void pullBinCqtData(const int octave, const int tone, std::complex<double> *const data);
+        inline void pushBinCqtData(const int octave, const int tone, std::complex<double> *const data);
 
         inline double getOctaveSampleRate(const int octave) { return mSampleRates[octave]; };
         inline int getOctaveBlockSize(const int octave) { return mBlockSizes[octave]; };
@@ -331,5 +333,17 @@ namespace Cqt
             }
         }
     };
+
+    template <size_t B, size_t OctaveNumber, bool Windowing>
+    inline void SlidingCqt<B, OctaveNumber, Windowing>::pullBinCqtData(const int octave, const int tone, std::complex<double> *const data)
+    {
+        mCqtData[octave][tone].pullBlock(data, mSamplesToProcess[octave]);
+    };
+
+    template <size_t B, size_t OctaveNumber, bool Windowing>
+    inline void SlidingCqt<B, OctaveNumber, Windowing>::pushBinCqtData(const int octave, const int tone, std::complex<double> *const data)
+    {
+        mCqtData[octave][tone].pushBlock(data, mSamplesToProcess[octave]);
+    }
 
 }
