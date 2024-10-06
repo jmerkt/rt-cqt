@@ -34,15 +34,18 @@ This is WIP. Python bindings can be found in the `python-bindings` folder, using
 [WIP Reverb plugin operating in Sliding CQT domain](https://github.com/jmerkt/harmonic-reverb)
 
 ## Limitations and Future Work
-* While the Polyphase IIR Lowpasses are cheap, they distort the phase of the signal. For future, a linear phase approach could be added.
+* While the Polyphase IIR lowpasses are cheap, they distort the phase of the signal. For future, a linear phase approach could be added.
 * Amplitudes in CQT domain, as well as for the re-synthesized signal for Sliding CQT are quite low, especially when using the windowed version. WIP to find out why and how to fix it.
 
 ## Current Status Illustration
 
 For illustration of the current status, python binds are used to create some plots (`python-bindings/examples/illustration.py`). 
 
-* 24 bins per octave, 9 octaves.
-* Two different input signals. A mixture of sine tones (note c and e with equal amplitude accross all octaves) and a logarithmic sine chirp.
+* 24 bins per octave, 9 octaves and a block size of 64 samples.
+* Two different input signals. A mixture of sine tones (note c and e with equal amplitude across all octaves) and a logarithmic sine chirp.
+* Lower latency of the sliding transform becomes quite visible for the chirp input signal. CQT with big hop sizes can't properly resolve the low frequencies of the chirp.
+* Amplitudes of the sliding transform are quite low.
+* Re-synthesis for both approaches is not perfect. Especially for the chirp signal, phase is distorted quite heavily. FIR lowpass filters for downsampling might help here.
 
 ![alt text](python-bindings/examples/illustration_cqt.png)
 
