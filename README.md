@@ -1,8 +1,8 @@
 # rt-cqt: Real-Time Constant-Q Transform
 rt-cqt aims to be a reasonable fast, header-only C++11 library for performing the Constant-Q Transform (CQT), optimized for real-time audio applications. It supports dynamic handling of different block sizes and sample rates, making it ideal for scenarios with varying audio processing demands. The library offers two distinct implementations:
 
-1. Constant-Q Transform `(include/ConstantQTransform.h)`: This version performs a Fast Fourier Transform (FFT) for each octave.
-2. Sliding Constant-Q Transform `(include/SlidingCqt.h)`: This version minimizes latency by continuously updating frequency bins with every new audio sample, making it particularly suitable low-latency applications.
+1. Constant-Q Transform (`include/ConstantQTransform.h`): This version performs a Fast Fourier Transform (FFT) for each octave.
+2. Sliding Constant-Q Transform (`include/SlidingCqt.h`): This version minimizes latency by continuously updating frequency bins with every new audio sample, making it particularly suitable low-latency applications.
 
 Both implementations utilize polyphase IIR lowpass filters for efficient upsampling and downsampling, which reduces computational overhead by processing lower octaves at reduced sample rates. 
 
@@ -35,5 +35,19 @@ This is WIP. Python bindings can be found in the `python-bindings` folder, using
 
 ## Limitations and Future Work
 * While the Polyphase IIR Lowpasses are cheap, they distort the phase of the signal. For future, a linear phase approach could be added.
+* Amplitudes in CQT domain, as well as for the re-synthesized signal for Sliding CQT are quite low, especially when using the windowed version. WIP to find out why and how to fix it.
+
+## Current Status Illustration
+
+For illustration of the current status, python binds are used to create some plots (`python-bindings/examples/illustration.py`). 
+
+* 24 bins per octave, 9 octaves.
+* Two different input signals. A mixture of sine tones (note c and e with equal amplitude accross all octaves) and a logarithmic sine chirp.
+
+![alt text](python-bindings/examples/illustration_cqt.png)
+
+![alt text](python-bindings/examples/illustration_sliding_cqt.png)
+
+
 
 

@@ -11,6 +11,8 @@ from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import chirp
+import pathlib
+import os
 
 sys.path.insert(1, './../build')
 import prtcqt as cqt
@@ -93,7 +95,7 @@ def process_signal(signal: np.ndarray, cqt_instance: cqt.Cqt24, sliding_cqt_inst
     return cqt_magnitudes, cqt_magnitudes_sliding, audio_output, audio_output_sliding
 
 
-def plot_signal_on_axis(ax, time_data, input_data, output_data, cqt_magnitudes):
+def plot_signal_on_axis(ax, time_data, input_data, output_data, cqt_magnitudes, title: str, plot_mean_magnitude: bool = False):
     cqt_magnitudes = cqt_magnitudes.transpose()
 
     input_data_f = np.fft.rfft(input_data)
@@ -104,13 +106,15 @@ def plot_signal_on_axis(ax, time_data, input_data, output_data, cqt_magnitudes):
     bin_magnitude_means = np.mean(cqt_magnitudes, axis=1)
 
     ax[0].plot(time_data, input_data, label='input')
-    ax[0].plot(time_data, output_data, label='output')
+    ax[0].plot(time_data, output_data, label='re-synthesis')
+    ax[0].set_title(title + ' Time Domain')
     ax[0].set_xlabel('time in s')
     ax[0].set_ylabel('amplitude')
     ax[0].legend()
 
     ax[1].plot(freq, np.abs(input_data_f), label='input')
-    ax[1].plot(freq, np.abs(output_data_f), label='output')
+    ax[1].plot(freq, np.abs(output_data_f), label='re-synthesis')
+    ax[1].set_title('FFT')
     ax[1].set_xlabel('frequency in Hz')
     ax[1].set_ylabel('magnitude')
     ax[1].set_xscale('log')
@@ -119,14 +123,16 @@ def plot_signal_on_axis(ax, time_data, input_data, output_data, cqt_magnitudes):
 
     ax[2].imshow(cqt_magnitudes, interpolation='bilinear')
     ax[2].set_aspect('auto')
-    ax[2].set_title('Cqt magnitudes')
-    ax[2].set_xlabel('i_block')
-    ax[2].set_ylabel('i_bin')
+    ax[2].set_title('CQT Magnitudes')
+    ax[2].set_xlabel('block number')
+    ax[2].set_ylabel('bin number')
 
-    ax[3].plot(bin_magnitude_means)
-    ax[3].set_xlabel('i_bin')
-    ax[3].set_ylabel('mean magnitude')
-    ax[3].invert_xaxis()
+    if plot_mean_magnitude:
+        ax[3].plot(bin_magnitude_means)
+        ax[3].set_title('Mean CQT Magnitudes Per Bin')
+        ax[3].set_xlabel('bin number')
+        ax[3].set_ylabel('mean magnitude')
+        ax[3].invert_xaxis()
 
 
 cqt_instance = cqt.Cqt24()
@@ -144,25 +150,33 @@ for i_octave in range(number_octaves):
 
 # Synthesize sine tones
 time_data = np.linspace(0.0, block_size / sample_rate * number_blocks, block_size * number_blocks)
-sine_mixture_signal = synth_sine_mixture(time_data, bin_freqs, [0, 5])
+sine_mixture_signal = synth_sine_mixture(time_data, bin_freqs, [0, 8])
 chirp_signal = synth_chirp(time_data)
 
 cqt_magnitudes, cqt_magnitudes_sliding, audio_output, audio_output_sliding \
     = process_signal(sine_mixture_signal, cqt_instance, cqt_instance_sliding)
 
-fig_cqt, ax_cqt = plt.subplots(4, 2)
+plot_mean_magnitudes = True
+number_rows = 4 if plot_mean_magnitudes else 3
+
+fig_cqt, ax_cqt = plt.subplots(number_rows, 2, figsize=(10, 10))
 fig_cqt.suptitle("CQT")
-fig_sliding_cqt, ax_sliding_cqt = plt.subplots(4, 2)
+fig_sliding_cqt, ax_sliding_cqt = plt.subplots(number_rows, 2, figsize=(10, 10))
 fig_sliding_cqt.suptitle("Sliding CQT")
 
-plot_signal_on_axis(ax_cqt[:, 0], time_data, sine_mixture_signal, audio_output, cqt_magnitudes)
-plot_signal_on_axis(ax_sliding_cqt[:, 0], time_data, sine_mixture_signal, audio_output_sliding, cqt_magnitudes_sliding)
+plot_signal_on_axis(ax_cqt[:, 0], time_data, sine_mixture_signal, audio_output, cqt_magnitudes, "Sine Mixture", plot_mean_magnitudes)
+plot_signal_on_axis(ax_sliding_cqt[:, 0], time_data, sine_mixture_signal, audio_output_sliding, cqt_magnitudes_sliding, "Sine Mixture", plot_mean_magnitudes)
 
 cqt_magnitudes, cqt_magnitudes_sliding, audio_output, audio_output_sliding \
     = process_signal(chirp_signal, cqt_instance, cqt_instance_sliding)
 
-plot_signal_on_axis(ax_cqt[:, 1], time_data, chirp_signal, audio_output, cqt_magnitudes)
-plot_signal_on_axis(ax_sliding_cqt[:, 1], time_data, chirp_signal, audio_output_sliding, cqt_magnitudes_sliding)
+plot_signal_on_axis(ax_cqt[:, 1], time_data, chirp_signal, audio_output, cqt_magnitudes, "Log Chirp", plot_mean_magnitudes)
+plot_signal_on_axis(ax_sliding_cqt[:, 1], time_data, chirp_signal, audio_output_sliding, cqt_magnitudes_sliding, "Log Chirp", plot_mean_magnitudes)
+
+fig_cqt.tight_layout()
+fig_sliding_cqt.tight_layout()
+fig_cqt.savefig(os.path.join(pathlib.Path().resolve(), 'illustration_cqt.png'))
+fig_sliding_cqt.savefig(os.path.join(pathlib.Path().resolve(), 'illustration_sliding_cqt.png'))
 plt.show()
 
 
