@@ -78,7 +78,15 @@ namespace Cqt
         audio_utils::CircularBuffer<std::complex<double>> mCqtData[OctaveNumber][B];
 
         // Windowing
-        static constexpr double mWindowEnergyLossCompensation{1.63};
+        // A periodic Hann window has a coherent gain of 1/2. The analysis
+        // normalization therefore keeps its bin-centred amplitudes consistent
+        // with the rectangular transform. The remaining 4/3 synthesis factor
+        // complements it to the Hann energy normalization 1 / mean(w^2) = 8/3.
+        static constexpr double mWindowAnalysisNormalization{2.};
+        static constexpr double mWindowSynthesisNormalization{4. / 3.};
+        // Only the positive-frequency coefficients are stored. Restore the
+        // conjugate half when producing a real signal.
+        static constexpr double mRealSynthesisNormalization{2.};
         static constexpr double mWindowCoeffs[3] = {0.5, -0.25, -0.25};
         static constexpr double mQAdd[3] = {0., -1., 1};
 
@@ -250,7 +258,8 @@ namespace Cqt
 
                             FtSum += mWindowCoeffs[i_window] * Ft;
                         }
-                        mInputFtBuffer[i_octave][i_tone][i_sample] = FtSum * mWindowEnergyLossCompensation;
+                        mInputFtBuffer[i_octave][i_tone][i_sample] =
+                            FtSum * mWindowAnalysisNormalization;
                     }
                 }
             }
@@ -290,9 +299,10 @@ namespace Cqt
                 {
                     mOutputSamplesBuffer[i_octave][i_sample] += mOutputSamplesTonesBuffer[i_octave][i_tone][i_sample];
                 }
+                mOutputSamplesBuffer[i_octave][i_sample] *= mRealSynthesisNormalization;
                 if constexpr (Windowing)
                 {
-                    mOutputSamplesBuffer[i_octave][i_sample] *= mWindowEnergyLossCompensation;
+                    mOutputSamplesBuffer[i_octave][i_sample] *= mWindowSynthesisNormalization;
                 }
             }
 

@@ -89,7 +89,10 @@ ctest --test-dir build --output-on-failure
 
 ## Limitations and Future Work
 * While the Polyphase IIR lowpasses are cheap, they distort the phase of the signal. For future, a linear phase approach could be added.
-* Amplitudes in CQT domain, as well as for the re-synthesized signal for Sliding CQT are quite low, especially when using the windowed version. WIP to find out why and how to fix it.
+* Sliding CQT analysis and one-sided synthesis amplitudes are normalized. Its
+  resynthesis still follows the original transform's inexpensive approximate
+  inverse, so gain and phase ripple remain between CQT bin centres. A canonical
+  dual synthesis filterbank would be required for perfect reconstruction.
 
 ## Current Status Illustration
 
@@ -104,5 +107,4 @@ For illustration of the current status, python binds are used to create some plo
 ![alt text](python-bindings/examples/illustration_cqt.png)
 
 ![alt text](python-bindings/examples/illustration_sliding_cqt.png)
-
 

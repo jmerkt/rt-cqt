@@ -91,6 +91,60 @@ void testSlidingCqtBatchedInput()
     }
 }
 
+template <bool Windowing>
+void testSlidingCqtAmplitudeNormalization()
+{
+    constexpr int BlockSize = 64;
+    constexpr int BlockCount = 512;
+    constexpr double Samplerate = 48000.;
+    constexpr int Tone = 8;
+    const double frequency = Cqt::computeBinFrequency(
+        Cqt::computeReferenceFrequency(440.), 24, 0, Tone);
+
+    Cqt::SlidingCqt<24, 9, Windowing> cqt;
+    cqt.init(Samplerate, BlockSize);
+
+    std::vector<double> output(
+        static_cast<std::size_t>(BlockSize * BlockCount), 0.);
+    double magnitudeSum = 0.;
+    int magnitudeCount = 0;
+    for (int blockIndex = 0; blockIndex < BlockCount; ++blockIndex)
+    {
+        std::vector<double> input =
+            makeSineBlock(BlockSize, blockIndex, Samplerate, frequency);
+        cqt.inputBlock(input.data(), BlockSize);
+
+        if (blockIndex >= (BlockCount / 2) && cqt.getSamplesToProcess(0) > 0)
+        {
+            magnitudeSum += std::abs(
+                cqt.getOctaveCqtBuffer(0)[Tone].pullDelaySample(0));
+            ++magnitudeCount;
+        }
+
+        const double *const outputBlock = cqt.outputBlock(BlockSize);
+        std::copy_n(
+            outputBlock,
+            BlockSize,
+            output.data() + static_cast<std::size_t>(blockIndex * BlockSize));
+    }
+
+    const double coefficientMagnitude =
+        magnitudeSum / static_cast<double>(magnitudeCount);
+    require(
+        std::abs(coefficientMagnitude - 0.5) < 1.e-3,
+        "Sliding CQT coefficient normalization is incorrect: " +
+            std::to_string(coefficientMagnitude));
+
+    const double reconstructedAmplitude =
+        measureToneAmplitude(output, output.size() / 2, Samplerate, frequency);
+    const double minimumAmplitude = Windowing ? 0.9 : 0.75;
+    require(
+        reconstructedAmplitude > minimumAmplitude &&
+            reconstructedAmplitude < 1.1,
+        "Sliding CQT resynthesis normalization is incorrect: " +
+            std::to_string(reconstructedAmplitude));
+}
+
 void testConstantCqtBatchedSchedule()
 {
     constexpr int BlockSize = 64;
@@ -188,6 +242,10 @@ int main()
     {
         testSlidingCqtBatchedInput();
         std::cout << "[pass] sliding CQT batched input\n";
+        testSlidingCqtAmplitudeNormalization<false>();
+        std::cout << "[pass] rectangular sliding CQT amplitude normalization\n";
+        testSlidingCqtAmplitudeNormalization<true>();
+        std::cout << "[pass] windowed sliding CQT amplitude normalization\n";
         testConstantCqtBatchedSchedule();
         std::cout << "[pass] constant CQT batched schedule\n";
         testConstantCqtHighFrequencyResynthesis();
