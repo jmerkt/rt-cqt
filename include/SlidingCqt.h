@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <complex>
 #include <atomic>
 
@@ -144,9 +145,9 @@ namespace Cqt
         {
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
-                const size_t octaveBlockSize = blockSize / std::pow(2, i_octave);
-                const size_t octaveBlockSizeClipped = octaveBlockSize > 2 ? octaveBlockSize : 2;
-                mCqtData[i_octave][i_tone].changeSize(octaveBlockSizeClipped);
+                const size_t octaveBlockSize = static_cast<size_t>(mBlockSizes[i_octave]);
+                const size_t octaveBufferSize = std::max<size_t>(2, octaveBlockSize * 2);
+                mCqtData[i_octave][i_tone].changeSize(octaveBufferSize);
 
                 for (size_t i_window = 0; i_window < 3u; i_window++)
                 {
@@ -193,7 +194,7 @@ namespace Cqt
 
         // push data into multirate resampling
         mFilterbank.inputBlock(data, blockSize);
-        // process all cqt sample based on numbers pushed into stage buffers
+        // Process all CQT samples pushed into the stage buffers.
         for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
         {
             BufferPtr inputBuffer = mFilterbank.getStageInputBuffer(i_octave);

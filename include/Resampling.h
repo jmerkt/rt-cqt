@@ -10,7 +10,11 @@
 
 #pragma once
 
+#include <cassert>
 #include <cmath>
+#include <cstddef>
+#include <limits>
+#include <stdexcept>
 #include <vector>
 #include "../submodules/audio-utils/include/Utils.h"
 
@@ -23,6 +27,7 @@ namespace Cqt
 	public:
 		Delay() = default;
 		~Delay() = default;
+		inline void reset() { mStorage = static_cast<FloatType>(0.); }
 
 		inline void processBlock(FloatType *const data, const int blockSize)
 		{
@@ -48,14 +53,8 @@ namespace Cqt
 		inline void initCoeff(FloatType ak)
 		{
 			mAk = static_cast<FloatType>(ak);
-		};
-
-		inline FloatType processSample(const FloatType sample)
-		{
-			const FloatType y = mAk * (sample - mYm1) + mXm1;
-			mXm1 = sample;
-			mYm1 = y;
-			return y;
+			mXm1 = static_cast<FloatType>(0.);
+			mYm1 = static_cast<FloatType>(0.);
 		};
 
 		inline void processBlock(FloatType *const samples, const int blocksize)
@@ -76,9 +75,9 @@ namespace Cqt
 	};
 
 	/*
-	*	Polyphase IIR Lowpass to sample up/down by 2.
+	*	Polyphase IIR Lowpass to resample blocks by a factor of 2.
 		See paper: "Reinaldo A. Valenzuela, A. G. Constantinides: Digital signal processing schemes for efficient interpolation and decimation".
-		This class handles memory allocation and downsampling/upsampling filtering for incoming samples/blocks by 2.
+		This class handles memory allocation and downsampling/upsampling filtering for incoming blocks.
 		One instance of this class can either be used for Downsampling OR for Upsampling. Not for both at the same time.
 	*/
 	template <typename FloatType, size_t AllpassNumber>
@@ -91,25 +90,15 @@ namespace Cqt
 		/*
 		Initialize the filters and allocate memory. Has to get called before processing starts.
 		*/
-		bool init(const int expectedBlockSize = 128, bool isDownsampling = true, bool isSampleBased = false, double transitionBandwidth = 0.02);
+		bool init(const int expectedBlockSize = 128, bool isDownsampling = true, double transitionBandwidth = 0.02);
 
-		/*
-		Call with 2 * fs_target.
-		*/
-		FloatType processSampleDown(const FloatType sample, bool &isSampleRet);
-		/*
-		Call with 2 * fs_original.
-		*/
-		FloatType processSampleUp(const FloatType sample);
-
-		FloatType *processBlockDown(FloatType *const inputBlock, const int inputBlockSize);
-		FloatType *processBlockUp(FloatType *const inputBlock, const int inputBlockSize);
+		FloatType *processBlockDown(const FloatType *const inputBlock);
+		FloatType *processBlockUp(const FloatType *const inputBlock);
 
 		int getOutputBlockSize() { return mTargetBlockSize; };
 		int getInputBlockSize() { return mInputBlockSize; };
 
 	private:
-		bool mIsSample = false;
 		double mTransitionBandwidth;
 		size_t mAllpassNumberTotal;
 		size_t mFilterOrder;
@@ -123,9 +112,6 @@ namespace Cqt
 		int mInputBlockSize{1};
 		int mFilterBufferSize{0};
 
-		FloatType mDelayPathStorage = 0.;
-		FloatType mDelayPathInput = 0.;
-		FloatType mDirectPathInput = 0.;
 		std::vector<FloatType> mDirectPathBuffer;
 		std::vector<FloatType> mDelayPathBuffer;
 		std::vector<FloatType> mOutputBlock;
@@ -141,8 +127,14 @@ namespace Cqt
 	}
 
 	template <typename FloatType, size_t AllpassNumber>
-	inline bool HalfBandLowpass<FloatType, AllpassNumber>::init(const int expectedBlockSize, bool isDownsampling, bool isSampleBased, double transitionBandwidth)
+	inline bool HalfBandLowpass<FloatType, AllpassNumber>::init(const int expectedBlockSize, bool isDownsampling, double transitionBandwidth)
 	{
+		if (expectedBlockSize <= 0 || (isDownsampling && ((expectedBlockSize % 2) != 0)))
+		{
+			throw std::invalid_argument(
+				"Resampling blocks must be positive; downsampling blocks must also be divisible by two");
+		}
+
 		// init filters
 		mTransitionBandwidth = transitionBandwidth * 2. * audio_utils::Pi<double>();
 		mCoefficients.clear();
@@ -163,84 +155,35 @@ namespace Cqt
 		mDirectPathBuffer.clear();
 		mDelayPathBuffer.clear();
 		mOutputBlock.clear();
-		if (!isSampleBased)
+		mDelay.reset();
+		mInputBlockSize = expectedBlockSize;
+		if (isDownsampling)
 		{
-			mInputBlockSize = expectedBlockSize;
-			if (isDownsampling)
-			{
-				mFilterBufferSize = expectedBlockSize / 2;
-				mTargetBlockSize = expectedBlockSize / 2;
-			}
-			else
-			{
-				mFilterBufferSize = expectedBlockSize;
-				mTargetBlockSize = expectedBlockSize * 2;
-			}
-			mDirectPathBuffer.resize(mFilterBufferSize, static_cast<FloatType>(0.));
-			mDelayPathBuffer.resize(mFilterBufferSize, static_cast<FloatType>(0.));
-			mOutputBlock.resize(mTargetBlockSize, static_cast<FloatType>(0.));
+			mFilterBufferSize = expectedBlockSize / 2;
+			mTargetBlockSize = expectedBlockSize / 2;
 		}
+		else
+		{
+			mFilterBufferSize = expectedBlockSize;
+			mTargetBlockSize = expectedBlockSize * 2;
+		}
+		mDirectPathBuffer.resize(mFilterBufferSize, static_cast<FloatType>(0.));
+		mDelayPathBuffer.resize(mFilterBufferSize, static_cast<FloatType>(0.));
+		mOutputBlock.resize(mTargetBlockSize, static_cast<FloatType>(0.));
 		return true;
 	}
 
 	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType HalfBandLowpass<FloatType, AllpassNumber>::processSampleDown(const FloatType sample, bool &isSampleRet)
-	{
-		FloatType output = 0.;
-		mDelayPathInput = sample;
-		mDirectPathInput = sample;
-		if (mIsSample)
-		{
-			for (size_t i = 0; i < AllpassNumber; i++)
-			{
-				mDirectPathInput = mDirectPathFilters[i].processSample(mDirectPathInput);
-				mDelayPathStorage = mDelayPathFilters[i].processSample(mDelayPathStorage);
-			}
-			output = (mDirectPathInput + mDelayPathStorage) * static_cast<FloatType>(0.5);
-		}
-		mDelayPathStorage = mDelayPathInput;
-		isSampleRet = mIsSample;
-		mIsSample = !mIsSample;
-		return output;
-	};
-
-	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType HalfBandLowpass<FloatType, AllpassNumber>::processSampleUp(const FloatType sample)
-	{
-		FloatType output = static_cast<FloatType>(0.0);
-		if (mIsSample)
-		{
-			mDirectPathInput = sample;
-			mDelayPathInput = sample;
-			for (size_t i = 0; i < AllpassNumber; i++)
-			{
-				mDirectPathInput = mDirectPathFilters[i].processSample(mDirectPathInput);
-			}
-			output = mDirectPathInput;
-		}
-		else
-		{
-			for (size_t i = 0; i < AllpassNumber; i++)
-			{
-				mDelayPathInput = mDelayPathFilters[i].processSample(mDelayPathInput);
-			}
-			output = mDelayPathInput;
-		}
-		mIsSample = !mIsSample;
-		return output;
-	};
-
-	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType *HalfBandLowpass<FloatType, AllpassNumber>::processBlockDown(FloatType *const inputBlock, const int inputBlockSize)
+	inline FloatType *HalfBandLowpass<FloatType, AllpassNumber>::processBlockDown(const FloatType *const inputBlock)
 	{
 		int outCountDirect = 0;
-		for (int i = 0; i < inputBlockSize; i += 2)
+		for (int i = 0; i < mInputBlockSize; i += 2)
 		{
 			mDirectPathBuffer[outCountDirect] = inputBlock[i];
 			outCountDirect++;
 		}
 		int outCountDelay = 0;
-		for (int i = 1; i < inputBlockSize; i += 2)
+		for (int i = 1; i < mInputBlockSize; i += 2)
 		{
 			mDelayPathBuffer[outCountDelay] = inputBlock[i];
 			outCountDelay++;
@@ -259,9 +202,9 @@ namespace Cqt
 	};
 
 	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType *HalfBandLowpass<FloatType, AllpassNumber>::processBlockUp(FloatType *const inputBlock, const int inputBlockSize)
+	inline FloatType *HalfBandLowpass<FloatType, AllpassNumber>::processBlockUp(const FloatType *const inputBlock)
 	{
-		for (int i = 0; i < inputBlockSize; i++)
+		for (int i = 0; i < mInputBlockSize; i++)
 		{
 			mDirectPathBuffer[i] = inputBlock[i];
 			mDelayPathBuffer[i] = inputBlock[i];
@@ -297,11 +240,6 @@ namespace Cqt
 		// step 2
 		const size_t n = mFilterOrder;
 		// step 3
-		const double q_1 = std::pow(q, n);
-		const double k_1 = 4. * std::sqrt(q_1);
-		const double d_s = std::sqrt((k_1) / (1. + k_1));
-		const double d_p = 1. - std::sqrt(1. - std::pow(d_s, 2));
-		// step 4
 		std::vector<double> w;
 		std::vector<double> a_dash;
 		for (size_t i = 1; i <= ((n - 1) / 2); i++)
@@ -335,7 +273,7 @@ namespace Cqt
 			double a_dash_i = num / den;
 			a_dash.push_back(a_dash_i);
 		}
-		// step 5
+		// step 4
 		std::vector<double> a;
 		for (double a_dash_i : a_dash)
 		{
@@ -345,14 +283,6 @@ namespace Cqt
 		return a;
 	};
 
-	/*
-	Config of ResamplingHandler
-	*/
-	enum class ProcessConfig
-	{
-		Sample = 0,
-		Block
-	};
 	enum class DirectionConfig
 	{
 		Up = 0,
@@ -362,48 +292,34 @@ namespace Cqt
 	};
 
 	/**
-	Resampling of audio blocks or samples by a given power of 2.
+	Resampling of audio blocks by a given power of 2.
 	*/
 	template <typename FloatType, size_t AllpassNumber>
 	class ResamplingHandler
 	{
 	public:
 		ResamplingHandler(double transitionBandwidth = 0.02);
-		~ResamplingHandler();
+		~ResamplingHandler() = default;
 		/**
 		Initialization of the ResamplingHandler
 		The configuration gives the amount of memory that will be allocated.
 		DirectionConfig has to match the order the processing functions will be called from outside.
 		*/
-		void init(const int powToExponent = 0, const int expectedBlockSize = 128, ProcessConfig sampleConfig = ProcessConfig::Sample, DirectionConfig directionConfig = DirectionConfig::UpDown);
-		/*
-		Called with 2*fs target. isSampleRet indicates whether sample is relevant.
-		*/
-		FloatType processSampleDown(FloatType sample, bool &isSampleRet);
-		/*
-		Called with target samplerate.
-		*/
-		FloatType processSampleUp(FloatType sample);
+		void init(const int powToExponent = 0, const int expectedBlockSize = 128, DirectionConfig directionConfig = DirectionConfig::UpDown);
 
-		FloatType *processBlockDown(FloatType *const inputBlock);
-		FloatType *processBlockUp(FloatType *const inputBlock);
+		FloatType *processBlockDown(const FloatType *const inputBlock);
+		FloatType *processBlockUp(const FloatType *const inputBlock);
 
 		int getOutputBlockSizeUp() { return mTargetBlockSizeUp; };
 		int getOutputBlockSizeDown() { return mTargetBlockSizeDown; };
 
 	private:
 		double mTransitionBandwidth;
-		int mPowTwoFactor;
-		int mResamplingFactor;
-		int mInputBlockSizeDown{0};
-		int mInputBlockSizeUp{0};
+		int mPowTwoFactor{0};
 		int mTargetBlockSizeUp{0};
 		int mTargetBlockSizeDown{0};
-		std::vector<HalfBandLowpass<FloatType, AllpassNumber> *> mDownFilters;
-		std::vector<HalfBandLowpass<FloatType, AllpassNumber> *> mUpFilters;
-		// sample based storage
-		std::vector<bool> mIsSample;
-		std::vector<FloatType> mUpsamplingStorage;
+		std::vector<HalfBandLowpass<FloatType, AllpassNumber>> mDownFilters;
+		std::vector<HalfBandLowpass<FloatType, AllpassNumber>> mUpFilters;
 	};
 
 	template <typename FloatType, size_t AllpassNumber>
@@ -413,178 +329,102 @@ namespace Cqt
 	}
 
 	template <typename FloatType, size_t AllpassNumber>
-	ResamplingHandler<FloatType, AllpassNumber>::~ResamplingHandler()
+	inline void ResamplingHandler<FloatType, AllpassNumber>::init(const int powToExponent, const int expectedBlockSize, DirectionConfig directionConfig)
 	{
-		for (auto filter : mDownFilters)
+		if (powToExponent < 0 || powToExponent >= 30)
 		{
-			delete filter;
+			throw std::invalid_argument("The power-of-two exponent must be between 0 and 29");
 		}
-		for (auto filter : mUpFilters)
+		if (expectedBlockSize <= 0)
 		{
-			delete filter;
+			throw std::invalid_argument("The resampling block size must be positive");
 		}
-	}
 
-	template <typename FloatType, size_t AllpassNumber>
-	inline void ResamplingHandler<FloatType, AllpassNumber>::init(const int powToExponent, const int expectedBlockSize, ProcessConfig sampleConfig, DirectionConfig directionConfig)
-	{
-		for (auto filter : mDownFilters)
-		{
-			delete filter;
-		}
-		for (auto filter : mUpFilters)
-		{
-			delete filter;
-		}
 		mDownFilters.clear();
 		mUpFilters.clear();
+		mDownFilters.reserve(static_cast<std::size_t>(powToExponent));
+		mUpFilters.reserve(static_cast<std::size_t>(powToExponent));
 		mPowTwoFactor = powToExponent;
-		mResamplingFactor = std::pow(2, powToExponent);
+		mTargetBlockSizeDown = expectedBlockSize;
+		mTargetBlockSizeUp = expectedBlockSize;
+
+		const int resamplingFactor = 1 << mPowTwoFactor;
+		if ((directionConfig == DirectionConfig::Down) || (directionConfig == DirectionConfig::DownUp))
+		{
+			if ((expectedBlockSize % resamplingFactor) != 0)
+			{
+				throw std::invalid_argument(
+					"The downsampling block size must be divisible by the resampling factor");
+			}
+		}
+		if ((directionConfig == DirectionConfig::Up || directionConfig == DirectionConfig::UpDown) &&
+			expectedBlockSize > (std::numeric_limits<int>::max() / resamplingFactor))
+		{
+			throw std::overflow_error("The upsampling block size is too large");
+		}
+
 		for (int i = 0; i < mPowTwoFactor; i++)
 		{
-			if (sampleConfig == ProcessConfig::Sample)
+			const int stageFactor = 1 << i;
+			if (directionConfig == DirectionConfig::Down)
 			{
-				mIsSample.push_back(false);
-				mUpsamplingStorage.push_back(0.);
-				mDownFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-				mUpFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-				mDownFilters[i]->init(1, true, true, mTransitionBandwidth);
-				mUpFilters[i]->init(1, false, true, mTransitionBandwidth);
+				mDownFilters.emplace_back();
+				mDownFilters.back().init(expectedBlockSize / stageFactor, true, mTransitionBandwidth);
 			}
-			else if (sampleConfig == ProcessConfig::Block)
+			else if (directionConfig == DirectionConfig::Up)
 			{
-				if (directionConfig == DirectionConfig::Down)
-				{
-					mDownFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-					mDownFilters[i]->init(expectedBlockSize / std::pow(2, i), true, false, mTransitionBandwidth);
-					mInputBlockSizeDown = expectedBlockSize;
-				}
-				else if (directionConfig == DirectionConfig::Up)
-				{
-					mUpFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-					mUpFilters[i]->init(expectedBlockSize * std::pow(2, i), false, false, mTransitionBandwidth);
-					mInputBlockSizeUp = expectedBlockSize;
-				}
-				else if (directionConfig == DirectionConfig::DownUp)
-				{
-					mDownFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-					mUpFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-					mDownFilters[i]->init(expectedBlockSize / std::pow(2, i), true, false, mTransitionBandwidth);
-					mUpFilters[i]->init(expectedBlockSize / std::pow(2, mPowTwoFactor - i), false, false, mTransitionBandwidth);
-					mInputBlockSizeDown = expectedBlockSize;
-					mInputBlockSizeUp = expectedBlockSize / std::pow(2, mPowTwoFactor);
-				}
-				else if (directionConfig == DirectionConfig::UpDown)
-				{
-					mDownFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-					mUpFilters.push_back(new HalfBandLowpass<FloatType, AllpassNumber>());
-					mUpFilters[i]->init(expectedBlockSize * std::pow(2, i), false, false, mTransitionBandwidth);
-					mDownFilters[i]->init(expectedBlockSize * std::pow(2, mPowTwoFactor - i), true, false, mTransitionBandwidth);
-					mInputBlockSizeDown = expectedBlockSize * std::pow(2, mPowTwoFactor);
-					mInputBlockSizeUp = expectedBlockSize;
-				}
+				mUpFilters.emplace_back();
+				mUpFilters.back().init(expectedBlockSize * stageFactor, false, mTransitionBandwidth);
+			}
+			else if (directionConfig == DirectionConfig::DownUp)
+			{
+				mDownFilters.emplace_back();
+				mUpFilters.emplace_back();
+				mDownFilters.back().init(expectedBlockSize / stageFactor, true, mTransitionBandwidth);
+				mUpFilters.back().init(expectedBlockSize / (1 << (mPowTwoFactor - i)), false, mTransitionBandwidth);
+			}
+			else if (directionConfig == DirectionConfig::UpDown)
+			{
+				mUpFilters.emplace_back();
+				mDownFilters.emplace_back();
+				mUpFilters.back().init(expectedBlockSize * stageFactor, false, mTransitionBandwidth);
+				mDownFilters.back().init(expectedBlockSize * (1 << (mPowTwoFactor - i)), true, mTransitionBandwidth);
 			}
 		}
-		if (sampleConfig == ProcessConfig::Block)
+
+		if (!mDownFilters.empty())
 		{
-			if (mDownFilters.size() > 0)
-			{
-				mTargetBlockSizeDown = mDownFilters[mPowTwoFactor - 1]->getOutputBlockSize();
-			}
-			else
-			{
-				mTargetBlockSizeDown = expectedBlockSize;
-			}
-			if (mUpFilters.size() > 0)
-			{
-				mTargetBlockSizeUp = mUpFilters[mPowTwoFactor - 1]->getOutputBlockSize();
-			}
-			else
-			{
-				mTargetBlockSizeUp = expectedBlockSize;
-			}
+			mTargetBlockSizeDown = mDownFilters.back().getOutputBlockSize();
+		}
+		if (!mUpFilters.empty())
+		{
+			mTargetBlockSizeUp = mUpFilters.back().getOutputBlockSize();
 		}
 	};
 
 	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType ResamplingHandler<FloatType, AllpassNumber>::processSampleDown(FloatType sample, bool &isSampleRet)
+	inline FloatType *ResamplingHandler<FloatType, AllpassNumber>::processBlockDown(const FloatType *const inputBlock)
 	{
-		if (mPowTwoFactor > 0)
-		{
-			for (int i = 0; i < mPowTwoFactor; i++)
-			{
-				mIsSample[i] = false;
-			}
-			for (int i = 0; i < mPowTwoFactor; i++)
-			{
-				bool isSampleTmp = mIsSample[i];
-				sample = mDownFilters[i]->processSampleDown(sample, isSampleTmp);
-				mIsSample[i] = isSampleTmp;
-				if (!mIsSample[i])
-				{
-					break;
-				}
-			}
-			isSampleRet = mIsSample[mPowTwoFactor - 1];
-			return sample;
-		}
-		else
-		{
-			isSampleRet = true;
-			return sample;
-		}
-	};
-
-	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType ResamplingHandler<FloatType, AllpassNumber>::processSampleUp(FloatType sample)
-	{
-		if (mPowTwoFactor > 0)
-		{
-			if (mIsSample[mPowTwoFactor - 1])
-			{
-				mUpsamplingStorage[mPowTwoFactor - 1] = sample;
-			}
-			for (int i = (mPowTwoFactor - 1); i > 0; i -= 1)
-			{
-				if (mIsSample[i - 1])
-				{
-					mUpsamplingStorage[i - 1] = mUpFilters[i]->processSampleUp(mUpsamplingStorage[i]);
-				}
-			}
-			sample = mUpFilters[0]->processSampleUp(mUpsamplingStorage[0]);
-			return sample;
-		}
-		else
-		{
-			return sample;
-		}
-	};
-
-	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType *ResamplingHandler<FloatType, AllpassNumber>::processBlockDown(FloatType *const inputBlock)
-	{
-		FloatType *inBlock = inputBlock;
-		FloatType *outBlock = inputBlock;
-		int inputBlockSize = mInputBlockSizeDown;
+		assert(mPowTwoFactor == 0 || static_cast<int>(mDownFilters.size()) == mPowTwoFactor);
+		const FloatType *inBlock = inputBlock;
+		FloatType *outBlock = const_cast<FloatType *>(inputBlock);
 		for (int i = 0; i < mPowTwoFactor; i++)
 		{
-			outBlock = mDownFilters[i]->processBlockDown(inBlock, inputBlockSize);
-			inputBlockSize = mDownFilters[i]->getOutputBlockSize();
+			outBlock = mDownFilters[i].processBlockDown(inBlock);
 			inBlock = outBlock;
 		}
 		return outBlock;
 	};
 
 	template <typename FloatType, size_t AllpassNumber>
-	inline FloatType *ResamplingHandler<FloatType, AllpassNumber>::processBlockUp(FloatType *const inputBlock)
+	inline FloatType *ResamplingHandler<FloatType, AllpassNumber>::processBlockUp(const FloatType *const inputBlock)
 	{
-		FloatType *inBlock = inputBlock;
-		FloatType *outBlock = inputBlock;
-		int inputBlockSize = mInputBlockSizeUp;
+		assert(mPowTwoFactor == 0 || static_cast<int>(mUpFilters.size()) == mPowTwoFactor);
+		const FloatType *inBlock = inputBlock;
+		FloatType *outBlock = const_cast<FloatType *>(inputBlock);
 		for (int i = 0; i < mPowTwoFactor; i++)
 		{
-			outBlock = mUpFilters[i]->processBlockUp(inBlock, inputBlockSize);
-			inputBlockSize = mUpFilters[i]->getOutputBlockSize();
+			outBlock = mUpFilters[i].processBlockUp(inBlock);
 			inBlock = outBlock;
 		}
 		return outBlock;

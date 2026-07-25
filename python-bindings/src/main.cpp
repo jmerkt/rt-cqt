@@ -4,6 +4,7 @@
 #include <pybind11/numpy.h>
 
 #include "../include/Python_ConstantQTransform.h"
+#include "../include/Python_ResamplingFilterbank.h"
 #include "../include/Python_SlidingCqt.h"
 
 #define STRINGIFY(x) #x
@@ -69,6 +70,13 @@ PYBIND11_MODULE(prtcqt, m)
         .def("outputBlock", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_outputBlock)
         .def("getOctaveValues", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_getOctaveValues)
         .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::Python_getOctaveBinFreqs);
+
+    py::class_<Cqt::Python_ResamplingFilterbank<9>>(m, "ResamplingFilterbank9")
+        .def(py::init<>())
+        .def("init", &Cqt::Python_ResamplingFilterbank<9>::init)
+        .def("processBlock", &Cqt::Python_ResamplingFilterbank<9>::processBlock)
+        .def("getProcessingBlockSize", &Cqt::Python_ResamplingFilterbank<9>::getProcessingBlockSize)
+        .def("getLatencySamples", &Cqt::Python_ResamplingFilterbank<9>::getLatencySamples);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

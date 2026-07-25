@@ -1,9 +1,11 @@
-build/
-dist/
-_build/
-_generate/
+# Binding-specific build and packaging output
+/build/
+/dist/
+/_build/
+/_generate/
 *.so
-*.py[cod]
-*.egg-info
-*env*
-.vscode
+
+# Local uv environment and test caches
+/.venv/
+/.pytest_cache/
+__pycache__/

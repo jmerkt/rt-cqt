@@ -55,7 +55,7 @@ namespace Cqt
 		int delayOctaveRate() const { return delayOctaveRate_; };
 
 	private:
-		int sample_{0}; // Position in actual block
+		int sample_{0}; // Position in the filterbank's internal processing block
 		int octave_{0};
 		int delayOctaveRate_{0}; // Delay of the transformation in samples in the corresponding octave sample buffer
 	};
@@ -425,11 +425,11 @@ namespace Cqt
 			// samplerates
 			mSampleRates[octave] = mFs / std::pow(2., octave);
 			mLatencyMs[octave] = static_cast<double>(mHopSizes[octave]) / mSampleRates[octave] * 1000.;
-			mSampleRatesByOriginRate[octave] = mSampleRates[octave] / mSampleRates[0];
+			mSampleRatesByOriginRate[octave] = mSampleRates[octave] / fs;
 		}
 		for (int octave = 0; octave < OctaveNumber; octave++)
 		{
-			mTransformationHandlers[octave].initFs(blockSize);
+			mTransformationHandlers[octave].initFs(mFilterbank.getOriginBlockSize());
 		}
 		// calc the windows and give em to handlers
 		recalculateKernels();
@@ -521,9 +521,10 @@ namespace Cqt
 		}
 		// process Filterbank and create Schedule
 		mFilterbank.inputBlock(data, blockSize);
+		const int processedInputSize = mFilterbank.getLastProcessedInputSize();
 		// determine cqt positions and schedule them
 		mCqtSchedule.clear();
-		for (int i = 0; i < blockSize; i++)
+		for (int i = 0; i < processedInputSize; i++)
 		{
 			for (int octave = (OctaveNumber - 1); octave >= 0; octave--) // starting with lowest pitched octave for historical reasons
 			{
@@ -531,7 +532,7 @@ namespace Cqt
 				if (mSampleCounters[octave] >= mLatencySamples[octave])
 				{
 					mSampleCounters[octave] = 0;
-					const int delayOctaveRate = static_cast<int>(static_cast<double>(blockSize - i - 1) * mSampleRatesByOriginRate[octave]);
+					const int delayOctaveRate = static_cast<int>(static_cast<double>(processedInputSize - i - 1) * mSampleRatesByOriginRate[octave]);
 					mCqtSchedule.push_back({i, octave, delayOctaveRate});
 				}
 			}
