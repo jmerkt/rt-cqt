@@ -60,7 +60,7 @@ void testHalfBandPartitionInvariance()
 
     Cqt::HalfBandLowpass<double, TestAllpassNumber> wholeDownsampler;
     wholeDownsampler.init(1024, true, TestTransitionBandwidth);
-    double *wholeDownData = wholeDownsampler.processBlockDown(input.data());
+    double *wholeDownData = wholeDownsampler.processDown(input.data());
     const std::vector<double> wholeDown(wholeDownData, wholeDownData + 512);
 
     Cqt::HalfBandLowpass<double, TestAllpassNumber> partitionedDownsampler;
@@ -69,14 +69,14 @@ void testHalfBandPartitionInvariance()
     partitionedDown.reserve(512);
     for (std::size_t offset = 0; offset < input.size(); offset += 256)
     {
-        double *block = partitionedDownsampler.processBlockDown(input.data() + offset);
+        double *block = partitionedDownsampler.processDown(input.data() + offset);
         partitionedDown.insert(partitionedDown.end(), block, block + 128);
     }
     requireNear(partitionedDown, wholeDown, 1.e-14, "Half-band downsampling depends on block partition");
 
     Cqt::HalfBandLowpass<double, TestAllpassNumber> wholeUpsampler;
     wholeUpsampler.init(512, false, TestTransitionBandwidth);
-    double *wholeUpData = wholeUpsampler.processBlockUp(wholeDown.data());
+    double *wholeUpData = wholeUpsampler.processUp(wholeDown.data());
     const std::vector<double> wholeUp(wholeUpData, wholeUpData + 1024);
 
     Cqt::HalfBandLowpass<double, TestAllpassNumber> partitionedUpsampler;
@@ -85,16 +85,16 @@ void testHalfBandPartitionInvariance()
     partitionedUp.reserve(1024);
     for (std::size_t offset = 0; offset < wholeDown.size(); offset += 128)
     {
-        double *block = partitionedUpsampler.processBlockUp(wholeDown.data() + offset);
+        double *block = partitionedUpsampler.processUp(wholeDown.data() + offset);
         partitionedUp.insert(partitionedUp.end(), block, block + 256);
     }
     requireNear(partitionedUp, wholeUp, 1.e-14, "Half-band upsampling depends on block partition");
 
     partitionedDownsampler.init(256, true, TestTransitionBandwidth);
-    double *reinitializedData = partitionedDownsampler.processBlockDown(input.data());
+    double *reinitializedData = partitionedDownsampler.processDown(input.data());
     Cqt::HalfBandLowpass<double, TestAllpassNumber> freshDownsampler;
     freshDownsampler.init(256, true, TestTransitionBandwidth);
-    double *freshData = freshDownsampler.processBlockDown(input.data());
+    double *freshData = freshDownsampler.processDown(input.data());
     requireNear(
         std::vector<double>(reinitializedData, reinitializedData + 128),
         std::vector<double>(freshData, freshData + 128),
@@ -108,7 +108,7 @@ void testResamplingHandlerPartitionInvariance()
 
     Cqt::ResamplingHandler<double, TestAllpassNumber> whole;
     whole.init(3, 1024, Cqt::DirectionConfig::Down);
-    double *wholeData = whole.processBlockDown(input.data());
+    double *wholeData = whole.processDown(input.data());
     const std::vector<double> expected(wholeData, wholeData + 128);
 
     Cqt::ResamplingHandler<double, TestAllpassNumber> partitioned;
@@ -117,7 +117,7 @@ void testResamplingHandlerPartitionInvariance()
     actual.reserve(128);
     for (std::size_t offset = 0; offset < input.size(); offset += 256)
     {
-        double *block = partitioned.processBlockDown(input.data() + offset);
+        double *block = partitioned.processDown(input.data() + offset);
         actual.insert(actual.end(), block, block + 32);
     }
 
@@ -125,8 +125,8 @@ void testResamplingHandlerPartitionInvariance()
 
     Cqt::ResamplingHandler<double, TestAllpassNumber> wholeRoundTrip;
     wholeRoundTrip.init(3, 1024, Cqt::DirectionConfig::DownUp);
-    double *wholeDown = wholeRoundTrip.processBlockDown(input.data());
-    double *wholeUp = wholeRoundTrip.processBlockUp(wholeDown);
+    double *wholeDown = wholeRoundTrip.processDown(input.data());
+    double *wholeUp = wholeRoundTrip.processUp(wholeDown);
     const std::vector<double> expectedRoundTrip(wholeUp, wholeUp + 1024);
 
     Cqt::ResamplingHandler<double, TestAllpassNumber> partitionedRoundTrip;
@@ -135,8 +135,8 @@ void testResamplingHandlerPartitionInvariance()
     actualRoundTrip.reserve(1024);
     for (std::size_t offset = 0; offset < input.size(); offset += 256)
     {
-        double *down = partitionedRoundTrip.processBlockDown(input.data() + offset);
-        double *up = partitionedRoundTrip.processBlockUp(down);
+        double *down = partitionedRoundTrip.processDown(input.data() + offset);
+        double *up = partitionedRoundTrip.processUp(down);
         actualRoundTrip.insert(actualRoundTrip.end(), up, up + 256);
     }
     requireNear(
@@ -393,7 +393,7 @@ void testPythonPlotAdapter()
 
     for (int callback = 0; callback < 4; ++callback)
     {
-        const auto result = filterbank.processBlock(block);
+        const auto result = filterbank.process(block);
         require(result.second.size() == block.size(), "Python adapter returned the wrong output size");
         const bool processingBoundary = callback == 3;
         require(

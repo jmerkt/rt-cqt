@@ -72,8 +72,8 @@ namespace Cqt
 		static int powerOfTwoExponent(const int value);
 		static int roundUpToMultiple(const int value, const int multiple);
 
-		void processInputBlock();
-		void processOutputBlock();
+		void processInput();
+		void processOutput();
 		void pushOutputSamples(const double *const data, const int blockSize);
 		void pullOutputSamples(double *const data, const int blockSize);
 
@@ -226,15 +226,15 @@ namespace Cqt
 	}
 
 	template <int StageNumber>
-	inline void ResamplingFilterbank<StageNumber>::processInputBlock()
+	inline void ResamplingFilterbank<StageNumber>::processInput()
 	{
-		double *dataIn = mInputResamplingHandler.processBlockDown(mInputData.data());
+		double *dataIn = mInputResamplingHandler.processDown(mInputData.data());
 		int dataSize = mOriginBlockSize;
 		mStageInputBuffers[0].pushBlock(dataIn, dataSize);
 
 		for (int stage = 0; stage < ResamplingStageNumber; ++stage)
 		{
-			dataIn = mDownsamplingFilters[static_cast<std::size_t>(stage)].processBlockDown(dataIn);
+			dataIn = mDownsamplingFilters[static_cast<std::size_t>(stage)].processDown(dataIn);
 			dataSize /= 2;
 			mStageInputBuffers[static_cast<std::size_t>(stage + 1)].pushBlock(dataIn, dataSize);
 		}
@@ -268,7 +268,7 @@ namespace Cqt
 
 			if (mInputDataSize == mProcessingBlockSize)
 			{
-				processInputBlock();
+				processInput();
 				mInputDataSize = 0;
 			}
 		}
@@ -307,7 +307,7 @@ namespace Cqt
 	}
 
 	template <int StageNumber>
-	inline void ResamplingFilterbank<StageNumber>::processOutputBlock()
+	inline void ResamplingFilterbank<StageNumber>::processOutput()
 	{
 		mStageOutputBuffers[StageNumber - 1].pullBlock(
 			mLowestStageOutput.data(), mLowestStageBlockSize);
@@ -315,13 +315,13 @@ namespace Cqt
 
 		for (int stage = ResamplingStageNumber - 1; stage >= 0; --stage)
 		{
-			dataOut = mUpsamplingFilters[static_cast<std::size_t>(stage)].processBlockUp(dataOut);
+			dataOut = mUpsamplingFilters[static_cast<std::size_t>(stage)].processUp(dataOut);
 			const int stageBlockSize = mOriginBlockSize / (1 << stage);
 			mStageOutputBuffers[static_cast<std::size_t>(stage)].pullBlockAdd(
 				dataOut, stageBlockSize);
 		}
 
-		dataOut = mInputResamplingHandler.processBlockUp(dataOut);
+		dataOut = mInputResamplingHandler.processUp(dataOut);
 		pushOutputSamples(dataOut, mProcessingBlockSize);
 	}
 
@@ -336,7 +336,7 @@ namespace Cqt
 
 		while (mPendingOutputBlocks > 0)
 		{
-			processOutputBlock();
+			processOutput();
 			--mPendingOutputBlocks;
 		}
 

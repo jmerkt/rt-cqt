@@ -37,7 +37,7 @@ namespace Cqt
                 std::max(4096, maximumCallbackBlockSize * 4));
         }
 
-        std::pair<std::vector<std::vector<double>>, std::vector<double>> processBlock(
+        std::pair<std::vector<std::vector<double>>, std::vector<double>> process(
             const std::vector<double> &input)
         {
             if (input.size() > static_cast<std::size_t>(mMaximumCallbackBlockSize))

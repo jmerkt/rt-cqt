@@ -48,7 +48,7 @@ def process(partitions):
             partitions[partition_index % len(partitions)],
             input_signal.size - position,
         )
-        stage_blocks, output_block = filterbank.processBlock(
+        stage_blocks, output_block = filterbank.process(
             input_signal[position : position + block_size].tolist()
         )
         for stage, stage_block in enumerate(stage_blocks):

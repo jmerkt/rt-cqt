@@ -26,7 +26,7 @@ def process(partitions):
             partitions[partition_index % len(partitions)],
             input_signal.size - position,
         )
-        stage_blocks, output_block = filterbank.processBlock(
+        stage_blocks, output_block = filterbank.process(
             input_signal[position : position + block_size].tolist()
         )
         for stage, stage_block in enumerate(stage_blocks):
@@ -73,4 +73,4 @@ def test_rejects_oversized_callback():
     filterbank.init(SAMPLE_RATE, CALLBACK_SIZE)
 
     with pytest.raises(ValueError):
-        filterbank.processBlock([0.0] * (CALLBACK_SIZE + 1))
+        filterbank.process([0.0] * (CALLBACK_SIZE + 1))
