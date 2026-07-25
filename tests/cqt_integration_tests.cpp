@@ -2,6 +2,7 @@
 #include "SlidingCqt.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <iostream>
@@ -42,6 +43,26 @@ std::vector<double> makeSineBlock(
             std::sin(2. * audio_utils::Pi<double>() * frequency * position / samplerate);
     }
     return block;
+}
+
+double measureToneAmplitude(
+    const std::vector<double> &data,
+    const std::size_t start,
+    const double samplerate,
+    const double frequency)
+{
+    double real = 0.;
+    double imaginary = 0.;
+    for (std::size_t sample = start; sample < data.size(); ++sample)
+    {
+        const double phase =
+            2. * audio_utils::Pi<double>() * frequency *
+            static_cast<double>(sample) / samplerate;
+        real += data[sample] * std::cos(phase);
+        imaginary -= data[sample] * std::sin(phase);
+    }
+    const double sampleCount = static_cast<double>(data.size() - start);
+    return 2. * std::hypot(real, imaginary) / sampleCount;
 }
 
 void testSlidingCqtBatchedInput()
@@ -88,11 +109,28 @@ void testConstantCqtBatchedSchedule()
             processingBoundary ? !schedule.empty() : schedule.empty(),
             "Constant CQT schedule is not aligned with filterbank processing");
 
+        std::array<int, 9> firstDelay;
+        std::array<int, 9> previousSynthesisOffset;
+        firstDelay.fill(-1);
+        previousSynthesisOffset.fill(-1);
         for (const Cqt::ScheduleElement &element : schedule)
         {
             require(
                 element.sample() >= 0 && element.sample() < 256,
                 "Schedule position is outside the internal processing block");
+            const int octave = element.octave();
+            if (firstDelay[octave] < 0)
+            {
+                firstDelay[octave] = element.delayOctaveRate();
+            }
+            require(
+                element.synthesisOffset() ==
+                    firstDelay[octave] - element.delayOctaveRate(),
+                "Synthesis offset is inconsistent with the analysis delay");
+            require(
+                element.synthesisOffset() > previousSynthesisOffset[octave],
+                "Synthesis offsets must advance within an internal block");
+            previousSynthesisOffset[octave] = element.synthesisOffset();
             cqt.cqt(element);
             cqt.icqt(element);
         }
@@ -100,6 +138,46 @@ void testConstantCqtBatchedSchedule()
         double *output = cqt.outputBlock(BlockSize);
         requireFinite(output, BlockSize, "Constant CQT produced a non-finite sample");
     }
+}
+
+void testConstantCqtHighFrequencyResynthesis()
+{
+    constexpr int BlockSize = 64;
+    constexpr int BlockCount = 512;
+    constexpr double Samplerate = 48000.;
+    const double frequency = Cqt::computeBinFrequency(
+        Cqt::computeReferenceFrequency(440.), 24, 0, 8);
+
+    Cqt::ConstantQTransform<24, 9> cqt;
+    cqt.init(64);
+    cqt.initFs(Samplerate, BlockSize);
+
+    std::vector<double> output(
+        static_cast<std::size_t>(BlockSize * BlockCount), 0.);
+    for (int blockIndex = 0; blockIndex < BlockCount; ++blockIndex)
+    {
+        std::vector<double> input =
+            makeSineBlock(BlockSize, blockIndex, Samplerate, frequency);
+        cqt.inputBlock(input.data(), BlockSize);
+        for (const Cqt::ScheduleElement &element : cqt.getCqtSchedule())
+        {
+            cqt.cqt(element);
+            cqt.icqt(element);
+        }
+
+        const double *const outputBlock = cqt.outputBlock(BlockSize);
+        std::copy_n(
+            outputBlock,
+            BlockSize,
+            output.data() + static_cast<std::size_t>(blockIndex * BlockSize));
+    }
+
+    const double reconstructedAmplitude =
+        measureToneAmplitude(output, output.size() / 2, Samplerate, frequency);
+    require(
+        reconstructedAmplitude > 0.5,
+        "Constant CQT lost high-frequency resynthesis amplitude: " +
+            std::to_string(reconstructedAmplitude));
 }
 
 }
@@ -112,6 +190,8 @@ int main()
         std::cout << "[pass] sliding CQT batched input\n";
         testConstantCqtBatchedSchedule();
         std::cout << "[pass] constant CQT batched schedule\n";
+        testConstantCqtHighFrequencyResynthesis();
+        std::cout << "[pass] constant CQT high-frequency resynthesis\n";
     }
     catch (const std::exception &error)
     {

@@ -19,6 +19,7 @@
 #include "ResamplingFilterbank.h"
 #include "../submodules/audio-utils/include/Utils.h"
 #include "Util.h"
+#include <array>
 #include <atomic>
 #include <memory>
 
@@ -48,16 +49,26 @@ namespace Cqt
 	class ScheduleElement
 	{
 	public:
-		ScheduleElement(const int sample, const int octave, const int delayOctaveRate) : sample_(sample), octave_(octave), delayOctaveRate_(delayOctaveRate) {};
+		ScheduleElement(
+			const int sample,
+			const int octave,
+			const int delayOctaveRate,
+			const int synthesisOffset = 0)
+			: sample_(sample),
+			  octave_(octave),
+			  delayOctaveRate_(delayOctaveRate),
+			  synthesisOffset_(synthesisOffset) {};
 		~ScheduleElement() = default;
 		int sample() const { return sample_; };
 		int octave() const { return octave_; };
 		int delayOctaveRate() const { return delayOctaveRate_; };
+		int synthesisOffset() const { return synthesisOffset_; };
 
 	private:
 		int sample_{0}; // Position in the filterbank's internal processing block
 		int octave_{0};
 		int delayOctaveRate_{0}; // Delay of the transformation in samples in the corresponding octave sample buffer
+		int synthesisOffset_{0}; // Forward offset in the current octave output block
 	};
 
 	/*
@@ -240,13 +251,13 @@ namespace Cqt
 		mStageOutputBuffer->pullBlock(mOutputBuffer.data(), mStageOutputBuffer->getWriteReadDistance());
 		//// add new data
 		int count = 0;
-		for (int i = schedule.delayOctaveRate(); i < (schedule.delayOctaveRate() + Fft_Size); i++)
+		for (int i = schedule.synthesisOffset(); i < (schedule.synthesisOffset() + Fft_Size); i++)
 		{
 			mOutputBuffer[i] += mIfftOutputBuffer[count];
 			count++;
 		}
 		//// push new data
-		mStageOutputBuffer->pushBlock(mOutputBuffer.data(), Fft_Size + schedule.delayOctaveRate());
+		mStageOutputBuffer->pushBlock(mOutputBuffer.data(), Fft_Size + schedule.synthesisOffset());
 	};
 
 	template <int B>
@@ -524,6 +535,8 @@ namespace Cqt
 		const int processedInputSize = mFilterbank.getLastProcessedInputSize();
 		// determine cqt positions and schedule them
 		mCqtSchedule.clear();
+		std::array<int, OctaveNumber> firstDelayOctaveRate;
+		firstDelayOctaveRate.fill(-1);
 		for (int i = 0; i < processedInputSize; i++)
 		{
 			for (int octave = (OctaveNumber - 1); octave >= 0; octave--) // starting with lowest pitched octave for historical reasons
@@ -533,7 +546,14 @@ namespace Cqt
 				{
 					mSampleCounters[octave] = 0;
 					const int delayOctaveRate = static_cast<int>(static_cast<double>(processedInputSize - i - 1) * mSampleRatesByOriginRate[octave]);
-					mCqtSchedule.push_back({i, octave, delayOctaveRate});
+					if (firstDelayOctaveRate[octave] < 0)
+					{
+						firstDelayOctaveRate[octave] = delayOctaveRate;
+					}
+					const int synthesisOffset =
+						firstDelayOctaveRate[octave] - delayOctaveRate;
+					mCqtSchedule.push_back(
+						{i, octave, delayOctaveRate, synthesisOffset});
 				}
 			}
 		}

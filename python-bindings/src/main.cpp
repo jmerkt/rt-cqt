@@ -31,7 +31,8 @@ PYBIND11_MODULE(prtcqt, m)
         .def(py::init<const int, const int, const int>())
         .def("sample", &Cqt::ScheduleElement::sample)
         .def("octave", &Cqt::ScheduleElement::octave)
-        .def("delayOctaveRate", &Cqt::ScheduleElement::delayOctaveRate);
+        .def("delayOctaveRate", &Cqt::ScheduleElement::delayOctaveRate)
+        .def("synthesisOffset", &Cqt::ScheduleElement::synthesisOffset);
 
     py::class_<Cqt::Python_ConstantQTransform<12, 9>>(m, "Cqt12")
         .def(py::init<>())
