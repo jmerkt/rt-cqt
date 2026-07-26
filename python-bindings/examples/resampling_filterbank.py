@@ -61,8 +61,8 @@ def process(partitions):
         input_signal,
         [np.asarray(stage) for stage in stages],
         np.asarray(output),
-        filterbank.getProcessingBlockSize(),
-        filterbank.getLatencySamples(),
+        filterbank.get_processing_block_size(),
+        filterbank.get_latency_samples(),
     )
 
 

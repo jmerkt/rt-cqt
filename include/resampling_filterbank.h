@@ -38,89 +38,89 @@ namespace Cqt
 
     using BufferPtr = audio_utils::CircularBuffer<double> *;
 
-    constexpr double FilterTransitionBandwidth{0.1};
-    constexpr unsigned AllpassNumber{3};
+    constexpr double FILTER_TRANSITION_BANDWIDTH{0.1};
+    constexpr unsigned ALLPASS_COUNT{3};
 
-    template <int StageNumber>
+    template <int StageCount>
     class ResamplingFilterbank
     {
-        static_assert(StageNumber > 0, "A resampling filterbank needs at least one stage");
-        static_assert(StageNumber < 30, "StageNumber is too large for 32-bit block sizes");
+        static_assert(StageCount > 0, "A resampling filterbank needs at least one stage");
+        static_assert(StageCount < 30, "StageCount is too large for 32-bit block sizes");
 
     public:
         ResamplingFilterbank() = default;
         ~ResamplingFilterbank() = default;
 
-        void init(const double samplerate, const int blockSize, const int bufferSize);
+        void init(const double sample_rate, const int block_size, const int buffer_size);
 
-        void inputBlock(const double *const data, const int blockSize);
-        double *outputBlock(const int blockSize);
+        void input_block(const double *const data, const int block_size);
+        double *output_block(const int block_size);
 
-        double getOriginSamplerate() const { return mOriginSamplerate; }
-        int getOriginBlockSize() const { return mOriginBlockSize; }
-        int getProcessingBlockSize() const { return mProcessingBlockSize; }
-        int getLatencySamples() const { return mProcessingBlockSize; }
-        int getLastProcessedInputSize() const { return mLastProcessedInputSize; }
-        BufferPtr getStageInputBuffer(const int stage)
+        double get_origin_sample_rate() const { return origin_sample_rate_; }
+        int get_origin_block_size() const { return origin_block_size_; }
+        int get_processing_block_size() const { return processing_block_size_; }
+        int get_latency_samples() const { return processing_block_size_; }
+        int get_last_processed_input_size() const { return last_processed_input_size_; }
+        BufferPtr get_stage_input_buffer(const int stage)
         {
-            return &mStageInputBuffers.at(static_cast<std::size_t>(stage));
+            return &stage_input_buffers_.at(static_cast<std::size_t>(stage));
         }
-        BufferPtr getStageOutputBuffer(const int stage)
+        BufferPtr get_stage_output_buffer(const int stage)
         {
-            return &mStageOutputBuffers.at(static_cast<std::size_t>(stage));
+            return &stage_output_buffers_.at(static_cast<std::size_t>(stage));
         }
-        int getOriginDownsampling() const { return mOriginDownsampling; }
+        int get_origin_downsampling() const { return origin_downsampling_; }
 
     private:
-        static constexpr int ResamplingStageNumber = StageNumber - 1;
+        static constexpr int RESAMPLING_STAGE_COUNT = StageCount - 1;
 
-        static bool isPowerOfTwo(const int value);
-        static int powerOfTwoExponent(const int value);
-        static int roundUpToMultiple(const int value, const int multiple);
+        static bool is_power_of_two(const int value);
+        static int power_of_two_exponent(const int value);
+        static int round_up_to_multiple(const int value, const int multiple);
 
-        void processInput();
-        void processOutput();
-        void pushOutputSamples(const double *const data, const int blockSize);
-        void pullOutputSamples(double *const data, const int blockSize);
+        void process_input();
+        void process_output();
+        void push_output_samples(const double *const data, const int block_size);
+        void pull_output_samples(double *const data, const int block_size);
 
-        ResamplingHandler<double, AllpassNumber> mInputResamplingHandler;
-        std::array<HalfBandLowpass<double, AllpassNumber>, ResamplingStageNumber> mDownsamplingFilters;
-        std::array<HalfBandLowpass<double, AllpassNumber>, ResamplingStageNumber> mUpsamplingFilters;
-        std::array<audio_utils::CircularBuffer<double>, StageNumber> mStageInputBuffers;
-        std::array<audio_utils::CircularBuffer<double>, StageNumber> mStageOutputBuffers;
+        ResamplingHandler<double, ALLPASS_COUNT> input_resampler_;
+        std::array<HalfBandLowpass<double, ALLPASS_COUNT>, RESAMPLING_STAGE_COUNT> downsampling_filters_;
+        std::array<HalfBandLowpass<double, ALLPASS_COUNT>, RESAMPLING_STAGE_COUNT> upsampling_filters_;
+        std::array<audio_utils::CircularBuffer<double>, StageCount> stage_input_buffers_;
+        std::array<audio_utils::CircularBuffer<double>, StageCount> stage_output_buffers_;
 
-        double mOriginSamplerate{48000.};
-        int mOriginBlockSize{0};
-        int mOriginDownsampling{0};
-        int mProcessingBlockSize{0};
-        int mMaximumCallbackBlockSize{0};
-        int mLowestStageBlockSize{0};
+        double origin_sample_rate_{48000.};
+        int origin_block_size_{0};
+        int origin_downsampling_{0};
+        int processing_block_size_{0};
+        int maximum_callback_block_size_{0};
+        int lowest_stage_block_size_{0};
 
-        std::vector<double> mInputData;
-        std::vector<double> mLowestStageOutput;
-        std::vector<double> mOutputData;
-        int mInputDataSize{0};
-        int mLastProcessedInputSize{0};
-        int mPendingOutputBlocks{0};
+        std::vector<double> input_data_;
+        std::vector<double> lowest_stage_output_;
+        std::vector<double> output_data_;
+        int input_data_size_{0};
+        int last_processed_input_size_{0};
+        int pending_output_blocks_{0};
 
         // A counted ring buffer is used here because CircularBuffer cannot
         // distinguish an empty buffer from a completely full one.
-        std::vector<double> mOutputQueue;
-        std::size_t mOutputReadPosition{0};
-        std::size_t mOutputWritePosition{0};
-        std::size_t mOutputSampleCount{0};
+        std::vector<double> output_queue_;
+        std::size_t output_read_position_{0};
+        std::size_t output_write_position_{0};
+        std::size_t output_sample_count_{0};
     };
 
-    template <int StageNumber>
-    inline bool ResamplingFilterbank<StageNumber>::isPowerOfTwo(const int value)
+    template <int StageCount>
+    inline bool ResamplingFilterbank<StageCount>::is_power_of_two(const int value)
     {
         return value > 0 && (value & (value - 1)) == 0;
     }
 
-    template <int StageNumber>
-    inline int ResamplingFilterbank<StageNumber>::powerOfTwoExponent(const int value)
+    template <int StageCount>
+    inline int ResamplingFilterbank<StageCount>::power_of_two_exponent(const int value)
     {
-        assert(isPowerOfTwo(value));
+        assert(is_power_of_two(value));
         int exponent = 0;
         for (int remaining = value; remaining > 1; remaining >>= 1)
         {
@@ -129,8 +129,8 @@ namespace Cqt
         return exponent;
     }
 
-    template <int StageNumber>
-    inline int ResamplingFilterbank<StageNumber>::roundUpToMultiple(const int value, const int multiple)
+    template <int StageCount>
+    inline int ResamplingFilterbank<StageCount>::round_up_to_multiple(const int value, const int multiple)
     {
         assert(value > 0);
         assert(multiple > 0);
@@ -142,194 +142,197 @@ namespace Cqt
         return static_cast<int>(result);
     }
 
-    template <int StageNumber>
+    template <int StageCount>
     inline void
-    ResamplingFilterbank<StageNumber>::init(const double samplerate, const int blockSize, const int bufferSize)
+    ResamplingFilterbank<StageCount>::init(const double sample_rate, const int block_size, const int buffer_size)
     {
-        if (!std::isfinite(samplerate) || samplerate <= 0.)
+        if (!std::isfinite(sample_rate) || sample_rate <= 0.)
         {
             throw std::invalid_argument("The sample rate must be finite and positive");
         }
-        if (blockSize <= 0 || bufferSize <= 0)
+        if (block_size <= 0 || buffer_size <= 0)
         {
             throw std::invalid_argument("Block and buffer sizes must be positive");
         }
 
-        const long long roundedSamplerate = std::llround(samplerate);
-        if (std::abs(samplerate - static_cast<double>(roundedSamplerate)) > 1.e-6 ||
-            roundedSamplerate > std::numeric_limits<int>::max())
+        const long long rounded_sample_rate = std::llround(sample_rate);
+        if (std::abs(sample_rate - static_cast<double>(rounded_sample_rate)) > 1.e-6 ||
+            rounded_sample_rate > std::numeric_limits<int>::max())
         {
             throw std::invalid_argument("Only integer sample rates are supported");
         }
 
-        const int samplerateInt = static_cast<int>(roundedSamplerate);
-        int originFactor = 0;
-        if ((samplerateInt % 44100) == 0 && isPowerOfTwo(samplerateInt / 44100))
+        const int sample_rate_integer = static_cast<int>(rounded_sample_rate);
+        int origin_factor = 0;
+        if ((sample_rate_integer % 44100) == 0 && is_power_of_two(sample_rate_integer / 44100))
         {
-            mOriginSamplerate = 44100.;
-            originFactor = samplerateInt / 44100;
+            origin_sample_rate_ = 44100.;
+            origin_factor = sample_rate_integer / 44100;
         }
-        else if ((samplerateInt % 48000) == 0 && isPowerOfTwo(samplerateInt / 48000))
+        else if ((sample_rate_integer % 48000) == 0 && is_power_of_two(sample_rate_integer / 48000))
         {
-            mOriginSamplerate = 48000.;
-            originFactor = samplerateInt / 48000;
+            origin_sample_rate_ = 48000.;
+            origin_factor = sample_rate_integer / 48000;
         }
         else
         {
             throw std::invalid_argument("The sample rate must be a power-of-two multiple of 44.1 kHz or 48 kHz");
         }
 
-        mOriginDownsampling = powerOfTwoExponent(originFactor);
-        const int filterbankFactor = 1 << ResamplingStageNumber;
-        if (originFactor > (std::numeric_limits<int>::max() / filterbankFactor))
+        origin_downsampling_ = power_of_two_exponent(origin_factor);
+        const int filterbank_factor = 1 << RESAMPLING_STAGE_COUNT;
+        if (origin_factor > (std::numeric_limits<int>::max() / filterbank_factor))
         {
             throw std::overflow_error("The resampling factor is too large");
         }
-        const int inputAlignment = originFactor * filterbankFactor;
+        const int input_alignment = origin_factor * filterbank_factor;
 
-        mMaximumCallbackBlockSize = blockSize;
-        mProcessingBlockSize = roundUpToMultiple(blockSize, inputAlignment);
-        mOriginBlockSize = mProcessingBlockSize / originFactor;
-        mLowestStageBlockSize = mOriginBlockSize / filterbankFactor;
+        maximum_callback_block_size_ = block_size;
+        processing_block_size_ = round_up_to_multiple(block_size, input_alignment);
+        origin_block_size_ = processing_block_size_ / origin_factor;
+        lowest_stage_block_size_ = origin_block_size_ / filterbank_factor;
 
-        mInputData.assign(static_cast<std::size_t>(mProcessingBlockSize), 0.);
-        mLowestStageOutput.assign(static_cast<std::size_t>(mLowestStageBlockSize), 0.);
-        mOutputData.assign(static_cast<std::size_t>(mMaximumCallbackBlockSize), 0.);
-        mInputDataSize = 0;
-        mLastProcessedInputSize = 0;
-        mPendingOutputBlocks = 0;
+        input_data_.assign(static_cast<std::size_t>(processing_block_size_), 0.);
+        lowest_stage_output_.assign(static_cast<std::size_t>(lowest_stage_block_size_), 0.);
+        output_data_.assign(static_cast<std::size_t>(maximum_callback_block_size_), 0.);
+        input_data_size_ = 0;
+        last_processed_input_size_ = 0;
+        pending_output_blocks_ = 0;
 
-        mInputResamplingHandler.init(mOriginDownsampling, mProcessingBlockSize, DirectionConfig::DownUp);
+        input_resampler_.init(origin_downsampling_, processing_block_size_, DirectionConfig::DownUp);
 
-        for (int stage = 0; stage < ResamplingStageNumber; ++stage)
+        for (int stage = 0; stage < RESAMPLING_STAGE_COUNT; ++stage)
         {
-            const int stageInputSize = mOriginBlockSize / (1 << stage);
-            const int stageOutputSize = stageInputSize / 2;
-            mDownsamplingFilters[static_cast<std::size_t>(stage)].init(stageInputSize, true, FilterTransitionBandwidth);
-            mUpsamplingFilters[static_cast<std::size_t>(stage)].init(stageOutputSize, false, FilterTransitionBandwidth);
+            const int stage_input_size = origin_block_size_ / (1 << stage);
+            const int stage_output_size = stage_input_size / 2;
+            downsampling_filters_[static_cast<std::size_t>(stage)].init(
+                stage_input_size, true, FILTER_TRANSITION_BANDWIDTH);
+            upsampling_filters_[static_cast<std::size_t>(stage)].init(
+                stage_output_size, false, FILTER_TRANSITION_BANDWIDTH);
         }
 
-        for (int stage = 0; stage < StageNumber; ++stage)
+        for (int stage = 0; stage < StageCount; ++stage)
         {
-            const int stageBlockSize = mOriginBlockSize / (1 << stage);
-            const int requiredBufferSize = std::max(bufferSize, stageBlockSize * 2);
-            mStageInputBuffers[static_cast<std::size_t>(stage)].changeSize(requiredBufferSize);
-            mStageOutputBuffers[static_cast<std::size_t>(stage)].changeSize(requiredBufferSize);
+            const int stage_block_size = origin_block_size_ / (1 << stage);
+            const int required_buffer_size = std::max(buffer_size, stage_block_size * 2);
+            stage_input_buffers_[static_cast<std::size_t>(stage)].change_size(required_buffer_size);
+            stage_output_buffers_[static_cast<std::size_t>(stage)].change_size(required_buffer_size);
         }
 
-        const std::size_t outputQueueCapacity = static_cast<std::size_t>(mProcessingBlockSize) * 2U;
-        mOutputQueue.assign(outputQueueCapacity, 0.);
-        mOutputReadPosition = 0;
-        mOutputWritePosition = static_cast<std::size_t>(mProcessingBlockSize);
-        mOutputSampleCount = static_cast<std::size_t>(mProcessingBlockSize);
+        const std::size_t output_queue_capacity = static_cast<std::size_t>(processing_block_size_) * 2U;
+        output_queue_.assign(output_queue_capacity, 0.);
+        output_read_position_ = 0;
+        output_write_position_ = static_cast<std::size_t>(processing_block_size_);
+        output_sample_count_ = static_cast<std::size_t>(processing_block_size_);
     }
 
-    template <int StageNumber>
-    inline void ResamplingFilterbank<StageNumber>::processInput()
+    template <int StageCount>
+    inline void ResamplingFilterbank<StageCount>::process_input()
     {
-        double *dataIn = mInputResamplingHandler.processDown(mInputData.data());
-        int dataSize = mOriginBlockSize;
-        mStageInputBuffers[0].pushBlock(dataIn, dataSize);
+        double *input = input_resampler_.process_down(input_data_.data());
+        int data_size = origin_block_size_;
+        stage_input_buffers_[0].push_block(input, data_size);
 
-        for (int stage = 0; stage < ResamplingStageNumber; ++stage)
+        for (int stage = 0; stage < RESAMPLING_STAGE_COUNT; ++stage)
         {
-            dataIn = mDownsamplingFilters[static_cast<std::size_t>(stage)].processDown(dataIn);
-            dataSize /= 2;
-            mStageInputBuffers[static_cast<std::size_t>(stage + 1)].pushBlock(dataIn, dataSize);
+            input = downsampling_filters_[static_cast<std::size_t>(stage)].process_down(input);
+            data_size /= 2;
+            stage_input_buffers_[static_cast<std::size_t>(stage + 1)].push_block(input, data_size);
         }
 
-        ++mPendingOutputBlocks;
-        mLastProcessedInputSize += mProcessingBlockSize;
+        ++pending_output_blocks_;
+        last_processed_input_size_ += processing_block_size_;
     }
 
-    template <int StageNumber>
-    inline void ResamplingFilterbank<StageNumber>::inputBlock(const double *const data, const int blockSize)
+    template <int StageCount>
+    inline void ResamplingFilterbank<StageCount>::input_block(const double *const data, const int block_size)
     {
-        if (blockSize < 0 || blockSize > mMaximumCallbackBlockSize || (data == nullptr && blockSize > 0))
+        if (block_size < 0 || block_size > maximum_callback_block_size_ || (data == nullptr && block_size > 0))
         {
             throw std::invalid_argument("The input block must not exceed the callback size supplied to init()");
         }
 
-        mLastProcessedInputSize = 0;
-        int inputPosition = 0;
-        while (inputPosition < blockSize)
+        last_processed_input_size_ = 0;
+        int input_position = 0;
+        while (input_position < block_size)
         {
-            const int samplesToCopy = std::min(blockSize - inputPosition, mProcessingBlockSize - mInputDataSize);
-            std::copy_n(data + inputPosition, samplesToCopy, mInputData.data() + mInputDataSize);
-            inputPosition += samplesToCopy;
-            mInputDataSize += samplesToCopy;
+            const int samples_to_copy =
+                std::min(block_size - input_position, processing_block_size_ - input_data_size_);
+            std::copy_n(data + input_position, samples_to_copy, input_data_.data() + input_data_size_);
+            input_position += samples_to_copy;
+            input_data_size_ += samples_to_copy;
 
-            if (mInputDataSize == mProcessingBlockSize)
+            if (input_data_size_ == processing_block_size_)
             {
-                processInput();
-                mInputDataSize = 0;
+                process_input();
+                input_data_size_ = 0;
             }
         }
     }
 
-    template <int StageNumber>
-    inline void ResamplingFilterbank<StageNumber>::pushOutputSamples(const double *const data, const int blockSize)
+    template <int StageCount>
+    inline void ResamplingFilterbank<StageCount>::push_output_samples(const double *const data, const int block_size)
     {
-        if (mOutputSampleCount + static_cast<std::size_t>(blockSize) > mOutputQueue.size())
+        if (output_sample_count_ + static_cast<std::size_t>(block_size) > output_queue_.size())
         {
             throw std::logic_error("Too many input blocks were submitted without consuming output");
         }
-        for (int sample = 0; sample < blockSize; ++sample)
+        for (int sample = 0; sample < block_size; ++sample)
         {
-            mOutputQueue[mOutputWritePosition] = data[sample];
-            mOutputWritePosition = (mOutputWritePosition + 1U) % mOutputQueue.size();
+            output_queue_[output_write_position_] = data[sample];
+            output_write_position_ = (output_write_position_ + 1U) % output_queue_.size();
         }
-        mOutputSampleCount += static_cast<std::size_t>(blockSize);
+        output_sample_count_ += static_cast<std::size_t>(block_size);
     }
 
-    template <int StageNumber>
-    inline void ResamplingFilterbank<StageNumber>::pullOutputSamples(double *const data, const int blockSize)
+    template <int StageCount>
+    inline void ResamplingFilterbank<StageCount>::pull_output_samples(double *const data, const int block_size)
     {
-        if (mOutputSampleCount < static_cast<std::size_t>(blockSize))
+        if (output_sample_count_ < static_cast<std::size_t>(block_size))
         {
             throw std::logic_error("More output was requested than the filterbank has buffered");
         }
-        for (int sample = 0; sample < blockSize; ++sample)
+        for (int sample = 0; sample < block_size; ++sample)
         {
-            data[sample] = mOutputQueue[mOutputReadPosition];
-            mOutputReadPosition = (mOutputReadPosition + 1U) % mOutputQueue.size();
+            data[sample] = output_queue_[output_read_position_];
+            output_read_position_ = (output_read_position_ + 1U) % output_queue_.size();
         }
-        mOutputSampleCount -= static_cast<std::size_t>(blockSize);
+        output_sample_count_ -= static_cast<std::size_t>(block_size);
     }
 
-    template <int StageNumber>
-    inline void ResamplingFilterbank<StageNumber>::processOutput()
+    template <int StageCount>
+    inline void ResamplingFilterbank<StageCount>::process_output()
     {
-        mStageOutputBuffers[StageNumber - 1].pullBlock(mLowestStageOutput.data(), mLowestStageBlockSize);
-        double *dataOut = mLowestStageOutput.data();
+        stage_output_buffers_[StageCount - 1].pull_block(lowest_stage_output_.data(), lowest_stage_block_size_);
+        double *output = lowest_stage_output_.data();
 
-        for (int stage = ResamplingStageNumber - 1; stage >= 0; --stage)
+        for (int stage = RESAMPLING_STAGE_COUNT - 1; stage >= 0; --stage)
         {
-            dataOut = mUpsamplingFilters[static_cast<std::size_t>(stage)].processUp(dataOut);
-            const int stageBlockSize = mOriginBlockSize / (1 << stage);
-            mStageOutputBuffers[static_cast<std::size_t>(stage)].pullBlockAdd(dataOut, stageBlockSize);
+            output = upsampling_filters_[static_cast<std::size_t>(stage)].process_up(output);
+            const int stage_block_size = origin_block_size_ / (1 << stage);
+            stage_output_buffers_[static_cast<std::size_t>(stage)].pull_block_add(output, stage_block_size);
         }
 
-        dataOut = mInputResamplingHandler.processUp(dataOut);
-        pushOutputSamples(dataOut, mProcessingBlockSize);
+        output = input_resampler_.process_up(output);
+        push_output_samples(output, processing_block_size_);
     }
 
-    template <int StageNumber>
-    inline double *ResamplingFilterbank<StageNumber>::outputBlock(const int blockSize)
+    template <int StageCount>
+    inline double *ResamplingFilterbank<StageCount>::output_block(const int block_size)
     {
-        if (blockSize < 0 || blockSize > mMaximumCallbackBlockSize)
+        if (block_size < 0 || block_size > maximum_callback_block_size_)
         {
             throw std::invalid_argument("The output block must not exceed the callback size supplied to init()");
         }
 
-        while (mPendingOutputBlocks > 0)
+        while (pending_output_blocks_ > 0)
         {
-            processOutput();
-            --mPendingOutputBlocks;
+            process_output();
+            --pending_output_blocks_;
         }
 
-        pullOutputSamples(mOutputData.data(), blockSize);
-        return mOutputData.data();
+        pull_output_samples(output_data_.data(), block_size);
+        return output_data_.data();
     }
 
 }

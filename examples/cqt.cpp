@@ -14,18 +14,19 @@ int main(int argc, char *argv[])
 
     Cqt::ConstantQTransform<bins_per_octave, octave_number> cqt;
     cqt.init(hop_size); // Separate hop-sizes for each octave can be initialized using the .init(std::vector<int>
-                        // octaveHopSizes) overload
-    cqt.initFs(sample_rate, block_size);
+                        // octave_hop_sizes) overload
+    cqt.init_sample_rate(sample_rate, block_size);
 
-    cqt.inputBlock(audio_input_block.data(), block_size);
-    const auto &schedule = cqt.getCqtSchedule();
-    for (const auto &s : schedule)
+    cqt.input_block(audio_input_block.data(), block_size);
+    const auto &schedule = cqt.get_cqt_schedule();
+    for (const auto &element : schedule)
     {
-        cqt.cqt(s);
-        auto cqt_domain_buffer = cqt.getOctaveCqtBuffer(s.octave()); // The data could now be manipulated in cqt domain
-        cqt.icqt(s);
+        cqt.cqt(element);
+        auto cqt_domain_buffer =
+            cqt.get_octave_cqt_buffer(element.octave()); // The data could now be manipulated in cqt domain
+        cqt.icqt(element);
     }
-    auto cqt_audio_block = cqt.outputBlock(audio_input_block.size());
+    auto cqt_audio_block = cqt.output_block(audio_input_block.size());
     for (size_t i = 0U; i < audio_input_block.size(); ++i)
     {
         audio_output_block[i] = cqt_audio_block[i];

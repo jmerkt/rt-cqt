@@ -17,36 +17,39 @@
 
 namespace Cqt
 {
-    template <int B, int OctaveNumber>
-    class Python_ConstantQTransform
+    template <int BinsPerOctave, int OctaveCount>
+    class PythonConstantQTransform
     {
     public:
-        void init(const int hopSize) { mTransform.init(hopSize); }
+        void init(const int hop_size) { transform_.init(hop_size); }
 
-        void initFs(const double samplerate, const int blockSize) { mTransform.initFs(samplerate, blockSize); }
-
-        void inputBlock(std::vector<double> &data)
+        void init_sample_rate(const double sample_rate, const int block_size)
         {
-            mTransform.inputBlock(data.data(), static_cast<int>(data.size()));
+            transform_.init_sample_rate(sample_rate, block_size);
         }
 
-        std::vector<double> outputBlock(const int blockSize)
+        void input_block(std::vector<double> &data)
         {
-            std::vector<double> outputVector(blockSize, 0.);
-            const double *const outputBlock = mTransform.outputBlock(blockSize);
-            std::memcpy(outputVector.data(), outputBlock, blockSize * sizeof(double));
-            return outputVector;
+            transform_.input_block(data.data(), static_cast<int>(data.size()));
         }
 
-        std::vector<ScheduleElement> &getCqtSchedule() { return mTransform.getCqtSchedule(); }
+        std::vector<double> output_block(const int block_size)
+        {
+            std::vector<double> output(block_size, 0.);
+            const double *const output_data = transform_.output_block(block_size);
+            std::memcpy(output.data(), output_data, block_size * sizeof(double));
+            return output;
+        }
 
-        void cqt(const ScheduleElement schedule) { mTransform.cqt(schedule); }
+        std::vector<ScheduleElement> &get_cqt_schedule() { return transform_.get_cqt_schedule(); }
 
-        void icqt(const ScheduleElement schedule) { mTransform.icqt(schedule); }
+        void cqt(const ScheduleElement schedule) { transform_.cqt(schedule); }
 
-        CqtBufferType *getOctaveCqtBuffer(const int octave) { return mTransform.getOctaveCqtBuffer(octave); }
+        void icqt(const ScheduleElement schedule) { transform_.icqt(schedule); }
+
+        CqtBufferType *get_octave_cqt_buffer(const int octave) { return transform_.get_octave_cqt_buffer(octave); }
 
     private:
-        ConstantQTransform<B, OctaveNumber> mTransform;
+        ConstantQTransform<BinsPerOctave, OctaveCount> transform_;
     };
 }

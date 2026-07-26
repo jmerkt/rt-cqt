@@ -12,11 +12,11 @@
 
 namespace py = pybind11;
 
-static constexpr bool use_windowing{true};
+static constexpr bool USE_WINDOWING{true};
 
-PYBIND11_MODULE(prtcqt, m)
+PYBIND11_MODULE(prtcqt, module)
 {
-    m.doc() = R"pbdoc(
+    module.doc() = R"pbdoc(
         Pybind11 example plugin
         -----------------------
 
@@ -27,61 +27,61 @@ PYBIND11_MODULE(prtcqt, m)
 
     )pbdoc";
 
-    py::class_<Cqt::ScheduleElement>(m, "ScheduleElement")
+    py::class_<Cqt::ScheduleElement>(module, "ScheduleElement")
         .def(py::init<const int, const int, const int>())
         .def("sample", &Cqt::ScheduleElement::sample)
         .def("octave", &Cqt::ScheduleElement::octave)
-        .def("delayOctaveRate", &Cqt::ScheduleElement::delayOctaveRate)
-        .def("synthesisOffset", &Cqt::ScheduleElement::synthesisOffset);
+        .def("delay_at_octave_rate", &Cqt::ScheduleElement::delay_at_octave_rate)
+        .def("synthesis_offset", &Cqt::ScheduleElement::synthesis_offset);
 
-    py::class_<Cqt::Python_ConstantQTransform<12, 9>>(m, "Cqt12")
+    py::class_<Cqt::PythonConstantQTransform<12, 9>>(module, "Cqt12")
         .def(py::init<>())
-        .def("init", &Cqt::Python_ConstantQTransform<12, 9>::init)
-        .def("initFs", &Cqt::Python_ConstantQTransform<12, 9>::initFs)
-        .def("inputBlock", &Cqt::Python_ConstantQTransform<12, 9>::inputBlock)
-        .def("outputBlock", &Cqt::Python_ConstantQTransform<12, 9>::outputBlock)
-        .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<12, 9>::getCqtSchedule)
-        .def("cqt", &Cqt::Python_ConstantQTransform<12, 9>::cqt)
-        .def("icqt", &Cqt::Python_ConstantQTransform<12, 9>::icqt)
-        .def("getOctaveCqtBuffer", &Cqt::Python_ConstantQTransform<12, 9>::getOctaveCqtBuffer);
+        .def("init", &Cqt::PythonConstantQTransform<12, 9>::init)
+        .def("init_sample_rate", &Cqt::PythonConstantQTransform<12, 9>::init_sample_rate)
+        .def("input_block", &Cqt::PythonConstantQTransform<12, 9>::input_block)
+        .def("output_block", &Cqt::PythonConstantQTransform<12, 9>::output_block)
+        .def("get_cqt_schedule", &Cqt::PythonConstantQTransform<12, 9>::get_cqt_schedule)
+        .def("cqt", &Cqt::PythonConstantQTransform<12, 9>::cqt)
+        .def("icqt", &Cqt::PythonConstantQTransform<12, 9>::icqt)
+        .def("get_octave_cqt_buffer", &Cqt::PythonConstantQTransform<12, 9>::get_octave_cqt_buffer);
 
-    py::class_<Cqt::Python_ConstantQTransform<24, 9>>(m, "Cqt24")
+    py::class_<Cqt::PythonConstantQTransform<24, 9>>(module, "Cqt24")
         .def(py::init<>())
-        .def("init", &Cqt::Python_ConstantQTransform<24, 9>::init)
-        .def("initFs", &Cqt::Python_ConstantQTransform<24, 9>::initFs)
-        .def("inputBlock", &Cqt::Python_ConstantQTransform<24, 9>::inputBlock)
-        .def("outputBlock", &Cqt::Python_ConstantQTransform<24, 9>::outputBlock)
-        .def("getCqtSchedule", &Cqt::Python_ConstantQTransform<24, 9>::getCqtSchedule)
-        .def("cqt", &Cqt::Python_ConstantQTransform<24, 9>::cqt)
-        .def("icqt", &Cqt::Python_ConstantQTransform<24, 9>::icqt)
-        .def("getOctaveCqtBuffer", &Cqt::Python_ConstantQTransform<24, 9>::getOctaveCqtBuffer);
+        .def("init", &Cqt::PythonConstantQTransform<24, 9>::init)
+        .def("init_sample_rate", &Cqt::PythonConstantQTransform<24, 9>::init_sample_rate)
+        .def("input_block", &Cqt::PythonConstantQTransform<24, 9>::input_block)
+        .def("output_block", &Cqt::PythonConstantQTransform<24, 9>::output_block)
+        .def("get_cqt_schedule", &Cqt::PythonConstantQTransform<24, 9>::get_cqt_schedule)
+        .def("cqt", &Cqt::PythonConstantQTransform<24, 9>::cqt)
+        .def("icqt", &Cqt::PythonConstantQTransform<24, 9>::icqt)
+        .def("get_octave_cqt_buffer", &Cqt::PythonConstantQTransform<24, 9>::get_octave_cqt_buffer);
 
-    py::class_<Cqt::Python_SlidingCqt<24, 9, use_windowing>>(m, "SlidingCqt24")
+    py::class_<Cqt::PythonSlidingCqt<24, 9, USE_WINDOWING>>(module, "SlidingCqt24")
         .def(py::init<>())
-        .def("init", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::init)
-        .def("inputBlock", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::inputBlock)
-        .def("outputBlock", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::outputBlock)
-        .def("getOctaveValues", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::getOctaveValues)
-        .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<24, 9, use_windowing>::getOctaveBinFreqs);
+        .def("init", &Cqt::PythonSlidingCqt<24, 9, USE_WINDOWING>::init)
+        .def("input_block", &Cqt::PythonSlidingCqt<24, 9, USE_WINDOWING>::input_block)
+        .def("output_block", &Cqt::PythonSlidingCqt<24, 9, USE_WINDOWING>::output_block)
+        .def("get_octave_values", &Cqt::PythonSlidingCqt<24, 9, USE_WINDOWING>::get_octave_values)
+        .def("get_octave_bin_frequencies", &Cqt::PythonSlidingCqt<24, 9, USE_WINDOWING>::get_octave_bin_frequencies);
 
-    py::class_<Cqt::Python_SlidingCqt<12, 9, use_windowing>>(m, "SlidingCqt12")
+    py::class_<Cqt::PythonSlidingCqt<12, 9, USE_WINDOWING>>(module, "SlidingCqt12")
         .def(py::init<>())
-        .def("init", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::init)
-        .def("inputBlock", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::inputBlock)
-        .def("outputBlock", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::outputBlock)
-        .def("getOctaveValues", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::getOctaveValues)
-        .def("getOctaveBinFreqs", &Cqt::Python_SlidingCqt<12, 9, use_windowing>::getOctaveBinFreqs);
+        .def("init", &Cqt::PythonSlidingCqt<12, 9, USE_WINDOWING>::init)
+        .def("input_block", &Cqt::PythonSlidingCqt<12, 9, USE_WINDOWING>::input_block)
+        .def("output_block", &Cqt::PythonSlidingCqt<12, 9, USE_WINDOWING>::output_block)
+        .def("get_octave_values", &Cqt::PythonSlidingCqt<12, 9, USE_WINDOWING>::get_octave_values)
+        .def("get_octave_bin_frequencies", &Cqt::PythonSlidingCqt<12, 9, USE_WINDOWING>::get_octave_bin_frequencies);
 
-    py::class_<Cqt::Python_ResamplingFilterbank<9>>(m, "ResamplingFilterbank9")
+    py::class_<Cqt::PythonResamplingFilterbank<9>>(module, "ResamplingFilterbank9")
         .def(py::init<>())
-        .def("init", &Cqt::Python_ResamplingFilterbank<9>::init)
-        .def("process", &Cqt::Python_ResamplingFilterbank<9>::process)
-        .def("getProcessingBlockSize", &Cqt::Python_ResamplingFilterbank<9>::getProcessingBlockSize)
-        .def("getLatencySamples", &Cqt::Python_ResamplingFilterbank<9>::getLatencySamples);
+        .def("init", &Cqt::PythonResamplingFilterbank<9>::init)
+        .def("process", &Cqt::PythonResamplingFilterbank<9>::process)
+        .def("get_processing_block_size", &Cqt::PythonResamplingFilterbank<9>::get_processing_block_size)
+        .def("get_latency_samples", &Cqt::PythonResamplingFilterbank<9>::get_latency_samples);
 
 #ifdef VERSION_INFO
-    m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
+    module.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
 #else
-    m.attr("__version__") = "dev";
+    module.attr("__version__") = "dev";
 #endif
 }

@@ -19,23 +19,23 @@ int main(int argc, char *argv[])
     for (int octave = 0; octave < octave_number; ++octave)
     {
         // The sample rates and block sizes of each downsampled octave can be accessed
-        const double octave_rate = cqt.getOctaveSampleRate(octave);
-        const int octave_size = cqt.getOctaveBlockSize(octave);
+        const double octave_rate = cqt.get_octave_sample_rate(octave);
+        const int octave_size = cqt.get_octave_block_size(octave);
         for (int tone = 0; tone < bins_per_octave; ++tone)
         {
             cqt_domain_buffers[octave][tone].resize(octave_size, {0., 0.});
         }
     }
 
-    cqt.inputBlock(audio_input_block.data(), block_size);
+    cqt.input_block(audio_input_block.data(), block_size);
     for (int octave = 0; octave < octave_number; ++octave)
     {
         // Because the data for each octave is downsampled, the number of samples per octave and block varies.
-        const size_t number_octave_samples = cqt.getSamplesToProcess(octave);
+        const size_t number_octave_samples = cqt.get_samples_to_process(octave);
         for (int tone = 0; tone < bins_per_octave; ++tone)
         {
             // Pull the cqt domain data for this octave and tone
-            cqt.pullBinCqtData(octave, tone, cqt_domain_buffers[octave][tone].data());
+            cqt.pull_bin_cqt_data(octave, tone, cqt_domain_buffers[octave][tone].data());
             for (size_t sample = 0U; sample < number_octave_samples; ++sample)
             {
                 // Here, we can manipulate the complex values for each sample, bin and octave
@@ -43,10 +43,10 @@ int main(int argc, char *argv[])
             }
             // Push back the manipulated cqt domain data for this octave and tone
             // The number of pulled and pushed samples must match number_octave_samples
-            cqt.pushBinCqtData(octave, tone, cqt_domain_buffers[octave][tone].data());
+            cqt.push_bin_cqt_data(octave, tone, cqt_domain_buffers[octave][tone].data());
         }
     }
-    auto cqt_audio_block = cqt.outputBlock(audio_input_block.size());
+    auto cqt_audio_block = cqt.output_block(audio_input_block.size());
     for (size_t sample = 0U; sample < audio_input_block.size(); ++sample)
     {
         audio_output_block[sample] = cqt_audio_block[sample];

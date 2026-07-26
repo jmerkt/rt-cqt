@@ -21,7 +21,7 @@ namespace
         }
     }
 
-    void requireFinite(const double *const data, const int size, const std::string &message)
+    void require_finite(const double *const data, const int size, const std::string &message)
     {
         for (int sample = 0; sample < size; ++sample)
         {
@@ -30,172 +30,174 @@ namespace
     }
 
     std::vector<double>
-    makeSineBlock(const int blockSize, const int blockIndex, const double samplerate, const double frequency)
+    make_sine_block(const int block_size, const int block_index, const double sample_rate, const double frequency)
     {
-        std::vector<double> block(static_cast<std::size_t>(blockSize));
-        for (int sample = 0; sample < blockSize; ++sample)
+        std::vector<double> block(static_cast<std::size_t>(block_size));
+        for (int sample = 0; sample < block_size; ++sample)
         {
-            const int position = blockIndex * blockSize + sample;
+            const int position = block_index * block_size + sample;
             block[static_cast<std::size_t>(sample)] =
-                std::sin(2. * audio_utils::Pi<double>() * frequency * position / samplerate);
+                std::sin(2. * audio_utils::pi<double>() * frequency * position / sample_rate);
         }
         return block;
     }
 
-    double measureToneAmplitude(const std::vector<double> &data,
-                                const std::size_t start,
-                                const double samplerate,
-                                const double frequency)
+    double measure_tone_amplitude(const std::vector<double> &data,
+                                  const std::size_t start,
+                                  const double sample_rate,
+                                  const double frequency)
     {
         double real = 0.;
         double imaginary = 0.;
         for (std::size_t sample = start; sample < data.size(); ++sample)
         {
-            const double phase = 2. * audio_utils::Pi<double>() * frequency * static_cast<double>(sample) / samplerate;
+            const double phase = 2. * audio_utils::pi<double>() * frequency * static_cast<double>(sample) / sample_rate;
             real += data[sample] * std::cos(phase);
             imaginary -= data[sample] * std::sin(phase);
         }
-        const double sampleCount = static_cast<double>(data.size() - start);
-        return 2. * std::hypot(real, imaginary) / sampleCount;
+        const double sample_count = static_cast<double>(data.size() - start);
+        return 2. * std::hypot(real, imaginary) / sample_count;
     }
 
-    void testSlidingCqtBatchedInput()
+    void test_sliding_cqt_batched_input()
     {
-        constexpr int BlockSize = 64;
+        constexpr int BLOCK_SIZE = 64;
         Cqt::SlidingCqt<12, 9, false> cqt;
-        cqt.init(48000., BlockSize);
+        cqt.init(48000., BLOCK_SIZE);
 
-        for (int blockIndex = 0; blockIndex < 12; ++blockIndex)
+        for (int block_index = 0; block_index < 12; ++block_index)
         {
-            std::vector<double> input = makeSineBlock(BlockSize, blockIndex, 48000., 440.);
-            cqt.inputBlock(input.data(), BlockSize);
+            std::vector<double> input = make_sine_block(BLOCK_SIZE, block_index, 48000., 440.);
+            cqt.input_block(input.data(), BLOCK_SIZE);
 
-            const bool processingBoundary = ((blockIndex + 1) % 4) == 0;
+            const bool processing_boundary = ((block_index + 1) % 4) == 0;
             for (int stage = 0; stage < 9; ++stage)
             {
-                const std::size_t expectedSamples = processingBoundary ? static_cast<std::size_t>(256 >> stage) : 0U;
-                require(cqt.getSamplesToProcess(stage) == expectedSamples,
+                const std::size_t expected_samples = processing_boundary ? static_cast<std::size_t>(256 >> stage) : 0U;
+                require(cqt.get_samples_to_process(stage) == expected_samples,
                         "Sliding CQT received an unexpected stage block size");
             }
 
-            double *output = cqt.outputBlock(BlockSize);
-            requireFinite(output, BlockSize, "Sliding CQT produced a non-finite sample");
+            double *output = cqt.output_block(BLOCK_SIZE);
+            require_finite(output, BLOCK_SIZE, "Sliding CQT produced a non-finite sample");
         }
     }
 
     template <bool Windowing>
-    void testSlidingCqtAmplitudeNormalization()
+    void test_sliding_cqt_amplitude_normalization()
     {
-        constexpr int BlockSize = 64;
-        constexpr int BlockCount = 512;
-        constexpr double Samplerate = 48000.;
-        constexpr int Tone = 8;
-        const double frequency = Cqt::computeBinFrequency(Cqt::computeReferenceFrequency(440.), 24, 0, Tone);
+        constexpr int BLOCK_SIZE = 64;
+        constexpr int BLOCK_COUNT = 512;
+        constexpr double SAMPLE_RATE = 48000.;
+        constexpr int TONE = 8;
+        const double frequency = Cqt::compute_bin_frequency(Cqt::compute_reference_frequency(440.), 24, 0, TONE);
 
         Cqt::SlidingCqt<24, 9, Windowing> cqt;
-        cqt.init(Samplerate, BlockSize);
+        cqt.init(SAMPLE_RATE, BLOCK_SIZE);
 
-        std::vector<double> output(static_cast<std::size_t>(BlockSize * BlockCount), 0.);
-        double magnitudeSum = 0.;
-        int magnitudeCount = 0;
-        for (int blockIndex = 0; blockIndex < BlockCount; ++blockIndex)
+        std::vector<double> output(static_cast<std::size_t>(BLOCK_SIZE * BLOCK_COUNT), 0.);
+        double magnitude_sum = 0.;
+        int magnitude_count = 0;
+        for (int block_index = 0; block_index < BLOCK_COUNT; ++block_index)
         {
-            std::vector<double> input = makeSineBlock(BlockSize, blockIndex, Samplerate, frequency);
-            cqt.inputBlock(input.data(), BlockSize);
+            std::vector<double> input = make_sine_block(BLOCK_SIZE, block_index, SAMPLE_RATE, frequency);
+            cqt.input_block(input.data(), BLOCK_SIZE);
 
-            if (blockIndex >= (BlockCount / 2) && cqt.getSamplesToProcess(0) > 0)
+            if (block_index >= (BLOCK_COUNT / 2) && cqt.get_samples_to_process(0) > 0)
             {
-                magnitudeSum += std::abs(cqt.getOctaveCqtBuffer(0)[Tone].pullDelaySample(0));
-                ++magnitudeCount;
+                magnitude_sum += std::abs(cqt.get_octave_cqt_buffer(0)[TONE].pull_delay_sample(0));
+                ++magnitude_count;
             }
 
-            const double *const outputBlock = cqt.outputBlock(BlockSize);
-            std::copy_n(outputBlock, BlockSize, output.data() + static_cast<std::size_t>(blockIndex * BlockSize));
+            const double *const output_block = cqt.output_block(BLOCK_SIZE);
+            std::copy_n(output_block, BLOCK_SIZE, output.data() + static_cast<std::size_t>(block_index * BLOCK_SIZE));
         }
 
-        const double coefficientMagnitude = magnitudeSum / static_cast<double>(magnitudeCount);
-        require(std::abs(coefficientMagnitude - 0.5) < 1.e-3,
-                "Sliding CQT coefficient normalization is incorrect: " + std::to_string(coefficientMagnitude));
+        const double coefficient_magnitude = magnitude_sum / static_cast<double>(magnitude_count);
+        require(std::abs(coefficient_magnitude - 0.5) < 1.e-3,
+                "Sliding CQT coefficient normalization is incorrect: " + std::to_string(coefficient_magnitude));
 
-        const double reconstructedAmplitude = measureToneAmplitude(output, output.size() / 2, Samplerate, frequency);
-        const double minimumAmplitude = Windowing ? 0.9 : 0.75;
-        require(reconstructedAmplitude > minimumAmplitude && reconstructedAmplitude < 1.1,
-                "Sliding CQT resynthesis normalization is incorrect: " + std::to_string(reconstructedAmplitude));
+        const double reconstructed_amplitude =
+            measure_tone_amplitude(output, output.size() / 2, SAMPLE_RATE, frequency);
+        const double minimum_amplitude = Windowing ? 0.9 : 0.75;
+        require(reconstructed_amplitude > minimum_amplitude && reconstructed_amplitude < 1.1,
+                "Sliding CQT resynthesis normalization is incorrect: " + std::to_string(reconstructed_amplitude));
     }
 
-    void testConstantCqtBatchedSchedule()
+    void test_constant_cqt_batched_schedule()
     {
-        constexpr int BlockSize = 64;
+        constexpr int BLOCK_SIZE = 64;
         Cqt::ConstantQTransform<12, 9> cqt;
         cqt.init(64);
-        cqt.initFs(48000., BlockSize);
+        cqt.init_sample_rate(48000., BLOCK_SIZE);
 
-        for (int blockIndex = 0; blockIndex < 12; ++blockIndex)
+        for (int block_index = 0; block_index < 12; ++block_index)
         {
-            std::vector<double> input = makeSineBlock(BlockSize, blockIndex, 48000., 440.);
-            cqt.inputBlock(input.data(), BlockSize);
+            std::vector<double> input = make_sine_block(BLOCK_SIZE, block_index, 48000., 440.);
+            cqt.input_block(input.data(), BLOCK_SIZE);
 
-            const auto &schedule = cqt.getCqtSchedule();
-            const bool processingBoundary = ((blockIndex + 1) % 4) == 0;
-            require(processingBoundary ? !schedule.empty() : schedule.empty(),
+            const auto &schedule = cqt.get_cqt_schedule();
+            const bool processing_boundary = ((block_index + 1) % 4) == 0;
+            require(processing_boundary ? !schedule.empty() : schedule.empty(),
                     "Constant CQT schedule is not aligned with filterbank processing");
 
-            std::array<int, 9> firstDelay;
-            std::array<int, 9> previousSynthesisOffset;
-            firstDelay.fill(-1);
-            previousSynthesisOffset.fill(-1);
+            std::array<int, 9> first_delay;
+            std::array<int, 9> previous_synthesis_offset;
+            first_delay.fill(-1);
+            previous_synthesis_offset.fill(-1);
             for (const Cqt::ScheduleElement &element : schedule)
             {
                 require(element.sample() >= 0 && element.sample() < 256,
                         "Schedule position is outside the internal processing block");
                 const int octave = element.octave();
-                if (firstDelay[octave] < 0)
+                if (first_delay[octave] < 0)
                 {
-                    firstDelay[octave] = element.delayOctaveRate();
+                    first_delay[octave] = element.delay_at_octave_rate();
                 }
-                require(element.synthesisOffset() == firstDelay[octave] - element.delayOctaveRate(),
+                require(element.synthesis_offset() == first_delay[octave] - element.delay_at_octave_rate(),
                         "Synthesis offset is inconsistent with the analysis delay");
-                require(element.synthesisOffset() > previousSynthesisOffset[octave],
+                require(element.synthesis_offset() > previous_synthesis_offset[octave],
                         "Synthesis offsets must advance within an internal block");
-                previousSynthesisOffset[octave] = element.synthesisOffset();
+                previous_synthesis_offset[octave] = element.synthesis_offset();
                 cqt.cqt(element);
                 cqt.icqt(element);
             }
 
-            double *output = cqt.outputBlock(BlockSize);
-            requireFinite(output, BlockSize, "Constant CQT produced a non-finite sample");
+            double *output = cqt.output_block(BLOCK_SIZE);
+            require_finite(output, BLOCK_SIZE, "Constant CQT produced a non-finite sample");
         }
     }
 
-    void testConstantCqtHighFrequencyResynthesis()
+    void test_constant_cqt_high_frequency_resynthesis()
     {
-        constexpr int BlockSize = 64;
-        constexpr int BlockCount = 512;
-        constexpr double Samplerate = 48000.;
-        const double frequency = Cqt::computeBinFrequency(Cqt::computeReferenceFrequency(440.), 24, 0, 8);
+        constexpr int BLOCK_SIZE = 64;
+        constexpr int BLOCK_COUNT = 512;
+        constexpr double SAMPLE_RATE = 48000.;
+        const double frequency = Cqt::compute_bin_frequency(Cqt::compute_reference_frequency(440.), 24, 0, 8);
 
         Cqt::ConstantQTransform<24, 9> cqt;
         cqt.init(64);
-        cqt.initFs(Samplerate, BlockSize);
+        cqt.init_sample_rate(SAMPLE_RATE, BLOCK_SIZE);
 
-        std::vector<double> output(static_cast<std::size_t>(BlockSize * BlockCount), 0.);
-        for (int blockIndex = 0; blockIndex < BlockCount; ++blockIndex)
+        std::vector<double> output(static_cast<std::size_t>(BLOCK_SIZE * BLOCK_COUNT), 0.);
+        for (int block_index = 0; block_index < BLOCK_COUNT; ++block_index)
         {
-            std::vector<double> input = makeSineBlock(BlockSize, blockIndex, Samplerate, frequency);
-            cqt.inputBlock(input.data(), BlockSize);
-            for (const Cqt::ScheduleElement &element : cqt.getCqtSchedule())
+            std::vector<double> input = make_sine_block(BLOCK_SIZE, block_index, SAMPLE_RATE, frequency);
+            cqt.input_block(input.data(), BLOCK_SIZE);
+            for (const Cqt::ScheduleElement &element : cqt.get_cqt_schedule())
             {
                 cqt.cqt(element);
                 cqt.icqt(element);
             }
 
-            const double *const outputBlock = cqt.outputBlock(BlockSize);
-            std::copy_n(outputBlock, BlockSize, output.data() + static_cast<std::size_t>(blockIndex * BlockSize));
+            const double *const output_block = cqt.output_block(BLOCK_SIZE);
+            std::copy_n(output_block, BLOCK_SIZE, output.data() + static_cast<std::size_t>(block_index * BLOCK_SIZE));
         }
 
-        const double reconstructedAmplitude = measureToneAmplitude(output, output.size() / 2, Samplerate, frequency);
-        require(reconstructedAmplitude > 0.5,
-                "Constant CQT lost high-frequency resynthesis amplitude: " + std::to_string(reconstructedAmplitude));
+        const double reconstructed_amplitude =
+            measure_tone_amplitude(output, output.size() / 2, SAMPLE_RATE, frequency);
+        require(reconstructed_amplitude > 0.5,
+                "Constant CQT lost high-frequency resynthesis amplitude: " + std::to_string(reconstructed_amplitude));
     }
 
 }
@@ -204,15 +206,15 @@ int main()
 {
     try
     {
-        testSlidingCqtBatchedInput();
+        test_sliding_cqt_batched_input();
         std::cout << "[pass] sliding CQT batched input\n";
-        testSlidingCqtAmplitudeNormalization<false>();
+        test_sliding_cqt_amplitude_normalization<false>();
         std::cout << "[pass] rectangular sliding CQT amplitude normalization\n";
-        testSlidingCqtAmplitudeNormalization<true>();
+        test_sliding_cqt_amplitude_normalization<true>();
         std::cout << "[pass] windowed sliding CQT amplitude normalization\n";
-        testConstantCqtBatchedSchedule();
+        test_constant_cqt_batched_schedule();
         std::cout << "[pass] constant CQT batched schedule\n";
-        testConstantCqtHighFrequencyResynthesis();
+        test_constant_cqt_high_frequency_resynthesis();
         std::cout << "[pass] constant CQT high-frequency resynthesis\n";
     }
     catch (const std::exception &error)

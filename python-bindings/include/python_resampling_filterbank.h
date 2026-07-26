@@ -20,60 +20,60 @@
 namespace Cqt
 {
 
-    template <int StageNumber>
-    class Python_ResamplingFilterbank
+    template <int StageCount>
+    class PythonResamplingFilterbank
     {
     public:
-        void init(const double samplerate, const int maximumCallbackBlockSize)
+        void init(const double sample_rate, const int maximum_callback_block_size)
         {
-            if (maximumCallbackBlockSize <= 0)
+            if (maximum_callback_block_size <= 0)
             {
                 throw std::invalid_argument("The callback block size must be positive");
             }
-            mMaximumCallbackBlockSize = maximumCallbackBlockSize;
-            mFilterbank.init(samplerate, maximumCallbackBlockSize, std::max(4096, maximumCallbackBlockSize * 4));
+            maximum_callback_block_size_ = maximum_callback_block_size;
+            filterbank_.init(sample_rate, maximum_callback_block_size, std::max(4096, maximum_callback_block_size * 4));
         }
 
         std::pair<std::vector<std::vector<double>>, std::vector<double>> process(const std::vector<double> &input)
         {
-            if (input.size() > static_cast<std::size_t>(mMaximumCallbackBlockSize))
+            if (input.size() > static_cast<std::size_t>(maximum_callback_block_size_))
             {
                 throw std::invalid_argument("The input exceeds the configured callback block size");
             }
 
-            mFilterbank.inputBlock(input.data(), static_cast<int>(input.size()));
+            filterbank_.input_block(input.data(), static_cast<int>(input.size()));
 
-            std::vector<std::vector<double>> stages(static_cast<std::size_t>(StageNumber));
-            for (int stage = 0; stage < StageNumber; ++stage)
+            std::vector<std::vector<double>> stages(static_cast<std::size_t>(StageCount));
+            for (int stage = 0; stage < StageCount; ++stage)
             {
-                BufferPtr stageInput = mFilterbank.getStageInputBuffer(stage);
-                const int stageBlockSize = static_cast<int>(stageInput->getWriteReadDistance());
-                stages[static_cast<std::size_t>(stage)].resize(static_cast<std::size_t>(stageBlockSize));
-                if (stageBlockSize == 0)
+                BufferPtr stage_input = filterbank_.get_stage_input_buffer(stage);
+                const int stage_block_size = static_cast<int>(stage_input->get_write_read_distance());
+                stages[static_cast<std::size_t>(stage)].resize(static_cast<std::size_t>(stage_block_size));
+                if (stage_block_size == 0)
                 {
                     continue;
                 }
 
-                stageInput->pullBlock(stages[static_cast<std::size_t>(stage)].data(), stageBlockSize);
+                stage_input->pull_block(stages[static_cast<std::size_t>(stage)].data(), stage_block_size);
                 // Echo every stage into the synthesis side. This exposes the
                 // complete filterbank path without involving a CQT.
-                mFilterbank.getStageOutputBuffer(stage)->pushBlock(stages[static_cast<std::size_t>(stage)].data(),
-                                                                   stageBlockSize);
+                filterbank_.get_stage_output_buffer(stage)->push_block(stages[static_cast<std::size_t>(stage)].data(),
+                                                                       stage_block_size);
             }
 
             std::vector<double> output(input.size(), 0.);
-            const double *const outputBlock = mFilterbank.outputBlock(static_cast<int>(input.size()));
-            std::copy_n(outputBlock, output.size(), output.data());
+            const double *const output_data = filterbank_.output_block(static_cast<int>(input.size()));
+            std::copy_n(output_data, output.size(), output.data());
             return {std::move(stages), std::move(output)};
         }
 
-        int getProcessingBlockSize() const { return mFilterbank.getProcessingBlockSize(); }
+        int get_processing_block_size() const { return filterbank_.get_processing_block_size(); }
 
-        int getLatencySamples() const { return mFilterbank.getLatencySamples(); }
+        int get_latency_samples() const { return filterbank_.get_latency_samples(); }
 
     private:
-        int mMaximumCallbackBlockSize{0};
-        ResamplingFilterbank<StageNumber> mFilterbank;
+        int maximum_callback_block_size_{0};
+        ResamplingFilterbank<StageCount> filterbank_;
     };
 
 }
