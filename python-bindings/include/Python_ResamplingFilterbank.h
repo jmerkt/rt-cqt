@@ -31,62 +31,45 @@ namespace Cqt
                 throw std::invalid_argument("The callback block size must be positive");
             }
             mMaximumCallbackBlockSize = maximumCallbackBlockSize;
-            mFilterbank.init(
-                samplerate,
-                maximumCallbackBlockSize,
-                std::max(4096, maximumCallbackBlockSize * 4));
+            mFilterbank.init(samplerate, maximumCallbackBlockSize, std::max(4096, maximumCallbackBlockSize * 4));
         }
 
-        std::pair<std::vector<std::vector<double>>, std::vector<double>> process(
-            const std::vector<double> &input)
+        std::pair<std::vector<std::vector<double>>, std::vector<double>> process(const std::vector<double> &input)
         {
             if (input.size() > static_cast<std::size_t>(mMaximumCallbackBlockSize))
             {
                 throw std::invalid_argument("The input exceeds the configured callback block size");
             }
 
-            mFilterbank.inputBlock(
-                input.data(), static_cast<int>(input.size()));
+            mFilterbank.inputBlock(input.data(), static_cast<int>(input.size()));
 
             std::vector<std::vector<double>> stages(static_cast<std::size_t>(StageNumber));
             for (int stage = 0; stage < StageNumber; ++stage)
             {
                 BufferPtr stageInput = mFilterbank.getStageInputBuffer(stage);
-                const int stageBlockSize =
-                    static_cast<int>(stageInput->getWriteReadDistance());
-                stages[static_cast<std::size_t>(stage)].resize(
-                    static_cast<std::size_t>(stageBlockSize));
+                const int stageBlockSize = static_cast<int>(stageInput->getWriteReadDistance());
+                stages[static_cast<std::size_t>(stage)].resize(static_cast<std::size_t>(stageBlockSize));
                 if (stageBlockSize == 0)
                 {
                     continue;
                 }
 
-                stageInput->pullBlock(
-                    stages[static_cast<std::size_t>(stage)].data(),
-                    stageBlockSize);
+                stageInput->pullBlock(stages[static_cast<std::size_t>(stage)].data(), stageBlockSize);
                 // Echo every stage into the synthesis side. This exposes the
                 // complete filterbank path without involving a CQT.
-                mFilterbank.getStageOutputBuffer(stage)->pushBlock(
-                    stages[static_cast<std::size_t>(stage)].data(),
-                    stageBlockSize);
+                mFilterbank.getStageOutputBuffer(stage)->pushBlock(stages[static_cast<std::size_t>(stage)].data(),
+                                                                   stageBlockSize);
             }
 
             std::vector<double> output(input.size(), 0.);
-            const double *const outputBlock =
-                mFilterbank.outputBlock(static_cast<int>(input.size()));
+            const double *const outputBlock = mFilterbank.outputBlock(static_cast<int>(input.size()));
             std::copy_n(outputBlock, output.size(), output.data());
             return {std::move(stages), std::move(output)};
         }
 
-        int getProcessingBlockSize() const
-        {
-            return mFilterbank.getProcessingBlockSize();
-        }
+        int getProcessingBlockSize() const { return mFilterbank.getProcessingBlockSize(); }
 
-        int getLatencySamples() const
-        {
-            return mFilterbank.getLatencySamples();
-        }
+        int getLatencySamples() const { return mFilterbank.getLatencySamples(); }
 
     private:
         int mMaximumCallbackBlockSize{0};

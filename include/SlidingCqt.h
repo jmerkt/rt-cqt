@@ -11,11 +11,11 @@
 #pragma once
 
 #include <algorithm>
-#include <complex>
 #include <atomic>
+#include <complex>
 
-#include "ResamplingFilterbank.h"
 #include "../submodules/audio-utils/include/Utils.h"
+#include "ResamplingFilterbank.h"
 #include "Util.h"
 
 namespace Cqt
@@ -38,7 +38,10 @@ namespace Cqt
         void inputBlock(double *const data, const int blockSize);
         double *outputBlock(const int blockSize);
 
-        inline audio_utils::CircularBuffer<std::complex<double>> *getOctaveCqtBuffer(const int octave) { return &mCqtData[octave][0]; };
+        inline audio_utils::CircularBuffer<std::complex<double>> *getOctaveCqtBuffer(const int octave)
+        {
+            return &mCqtData[octave][0];
+        };
         inline size_t getSamplesToProcess(const int octave) { return mSamplesToProcess[octave]; };
         inline void pullBinCqtData(const int octave, const int tone, std::complex<double> *const data);
         inline void pushBinCqtData(const int octave, const int tone, std::complex<double> *const data);
@@ -133,7 +136,8 @@ namespace Cqt
         for (size_t i_octave = 0; i_octave < OctaveNumber; i_octave++)
         {
             mSampleRates[i_octave] = mFs / std::pow(2., i_octave);
-            mBlockSizes[i_octave] = (originBlockSize / std::pow(2, i_octave) >= 1) ? originBlockSize / std::pow(2, i_octave) : 1;
+            mBlockSizes[i_octave] =
+                (originBlockSize / std::pow(2, i_octave) >= 1) ? originBlockSize / std::pow(2, i_octave) : 1;
         }
         computeKernels();
         // initialize delay lines
@@ -218,7 +222,9 @@ namespace Cqt
             for (size_t i_tone = 0; i_tone < B; i_tone++)
             {
                 const double nk = mNk[i_octave][i_tone];
-                mDelayLines[i_octave].pullDelayBlock(mInputDelaySamplesBuffer[i_octave][i_tone].data(), static_cast<int>(nk) + nOctaveSamples - 1, nOctaveSamples);
+                mDelayLines[i_octave].pullDelayBlock(mInputDelaySamplesBuffer[i_octave][i_tone].data(),
+                                                     static_cast<int>(nk) + nOctaveSamples - 1,
+                                                     nOctaveSamples);
             }
             for (size_t i_sample = 0; i_sample < nOctaveSamples; i_sample++)
             {
@@ -258,8 +264,7 @@ namespace Cqt
 
                             FtSum += mWindowCoeffs[i_window] * Ft;
                         }
-                        mInputFtBuffer[i_octave][i_tone][i_sample] =
-                            FtSum * mWindowAnalysisNormalization;
+                        mInputFtBuffer[i_octave][i_tone][i_sample] = FtSum * mWindowAnalysisNormalization;
                     }
                 }
             }
@@ -338,21 +343,28 @@ namespace Cqt
                     mQ[i_octave][i_tone][i_window] += mQAdd[i_window];
 
                     // exp multiplication
-                    mExpQ[i_octave][i_tone][i_window] = std::exp(-1i * audio_utils::TwoPi<double>() * mQ[i_octave][i_tone][i_window]);
-                    mExpQNk[i_octave][i_tone][i_window] = std::exp(1i * audio_utils::TwoPi<double>() * mQ[i_octave][i_tone][i_window] * mOneDivNk[i_octave][i_tone]);
+                    mExpQ[i_octave][i_tone][i_window] =
+                        std::exp(-1i * audio_utils::TwoPi<double>() * mQ[i_octave][i_tone][i_window]);
+                    mExpQNk[i_octave][i_tone][i_window] =
+                        std::exp(1i * audio_utils::TwoPi<double>() * mQ[i_octave][i_tone][i_window] *
+                                 mOneDivNk[i_octave][i_tone]);
                 }
             }
         }
     };
 
     template <size_t B, size_t OctaveNumber, bool Windowing>
-    inline void SlidingCqt<B, OctaveNumber, Windowing>::pullBinCqtData(const int octave, const int tone, std::complex<double> *const data)
+    inline void SlidingCqt<B, OctaveNumber, Windowing>::pullBinCqtData(const int octave,
+                                                                       const int tone,
+                                                                       std::complex<double> *const data)
     {
         mCqtData[octave][tone].pullBlock(data, mSamplesToProcess[octave]);
     };
 
     template <size_t B, size_t OctaveNumber, bool Windowing>
-    inline void SlidingCqt<B, OctaveNumber, Windowing>::pushBinCqtData(const int octave, const int tone, std::complex<double> *const data)
+    inline void SlidingCqt<B, OctaveNumber, Windowing>::pushBinCqtData(const int octave,
+                                                                       const int tone,
+                                                                       std::complex<double> *const data)
     {
         mCqtData[octave][tone].pushBlock(data, mSamplesToProcess[octave]);
     }

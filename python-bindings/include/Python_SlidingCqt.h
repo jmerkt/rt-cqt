@@ -22,10 +22,7 @@ namespace Cqt
     class Python_SlidingCqt
     {
     public:
-        void init(const double samplerate, const int blockSize)
-        {
-            mTransform.init(samplerate, blockSize);
-        }
+        void init(const double samplerate, const int blockSize) { mTransform.init(samplerate, blockSize); }
 
         void inputBlock(std::vector<double> &data, const int blockSize)
         {
@@ -43,8 +40,7 @@ namespace Cqt
         std::vector<std::complex<double>> getOctaveValues(const int octave)
         {
             std::vector<std::complex<double>> valueVector(B, {0., 0.});
-            audio_utils::CircularBuffer<std::complex<double>> *octaveCqtBuffer =
-                mTransform.getOctaveCqtBuffer(octave);
+            audio_utils::CircularBuffer<std::complex<double>> *octaveCqtBuffer = mTransform.getOctaveCqtBuffer(octave);
             for (int i_tone = 0; i_tone < B; i_tone++)
             {
                 valueVector[i_tone] = octaveCqtBuffer[i_tone].pullDelaySample(0);

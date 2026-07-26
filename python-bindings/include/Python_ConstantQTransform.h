@@ -21,15 +21,9 @@ namespace Cqt
     class Python_ConstantQTransform
     {
     public:
-        void init(const int hopSize)
-        {
-            mTransform.init(hopSize);
-        }
+        void init(const int hopSize) { mTransform.init(hopSize); }
 
-        void initFs(const double samplerate, const int blockSize)
-        {
-            mTransform.initFs(samplerate, blockSize);
-        }
+        void initFs(const double samplerate, const int blockSize) { mTransform.initFs(samplerate, blockSize); }
 
         void inputBlock(std::vector<double> &data)
         {
@@ -44,25 +38,13 @@ namespace Cqt
             return outputVector;
         }
 
-        std::vector<ScheduleElement> &getCqtSchedule()
-        {
-            return mTransform.getCqtSchedule();
-        }
+        std::vector<ScheduleElement> &getCqtSchedule() { return mTransform.getCqtSchedule(); }
 
-        void cqt(const ScheduleElement schedule)
-        {
-            mTransform.cqt(schedule);
-        }
+        void cqt(const ScheduleElement schedule) { mTransform.cqt(schedule); }
 
-        void icqt(const ScheduleElement schedule)
-        {
-            mTransform.icqt(schedule);
-        }
+        void icqt(const ScheduleElement schedule) { mTransform.icqt(schedule); }
 
-        CqtBufferType *getOctaveCqtBuffer(const int octave)
-        {
-            return mTransform.getOctaveCqtBuffer(octave);
-        }
+        CqtBufferType *getOctaveCqtBuffer(const int octave) { return mTransform.getOctaveCqtBuffer(octave); }
 
     private:
         ConstantQTransform<B, OctaveNumber> mTransform;

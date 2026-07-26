@@ -13,7 +13,8 @@ int main(int argc, char *argv[])
     std::vector<double> audio_output_block(block_size, 0.);
 
     Cqt::ConstantQTransform<bins_per_octave, octave_number> cqt;
-    cqt.init(hop_size); // Separate hop-sizes for each octave can be initialized using the .init(std::vector<int> octaveHopSizes) overload
+    cqt.init(hop_size); // Separate hop-sizes for each octave can be initialized using the .init(std::vector<int>
+                        // octaveHopSizes) overload
     cqt.initFs(sample_rate, block_size);
 
     cqt.inputBlock(audio_input_block.data(), block_size);
