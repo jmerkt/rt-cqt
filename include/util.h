@@ -5,7 +5,7 @@
 namespace Cqt
 {
     /**
-     * Computes the frequency of the first bin of the highest octave for a given concert pitch.
+     * Returns the frequency of the first bin of the highest octave for a given concert pitch.
      * https://en.wikipedia.org/wiki/Piano_key_frequencies
      * For a concert pitch of 440 Hz this results in 8.37 kHz.
      */

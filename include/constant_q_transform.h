@@ -3,7 +3,7 @@
 
  This file is part of the rt-cqt library. Copyright (C) the rt-cqt developers.
 
- See LICENSE.txt for  more info.
+ See LICENSE.txt for more info.
 
  ==============================================================================
 */
@@ -17,9 +17,9 @@
  * - No Zero Padding as of now
  */
 
-#include "../submodules/audio-utils/include/Utils.h"
-#include "ResamplingFilterbank.h"
-#include "Util.h"
+#include "../submodules/audio-utils/include/utils.h"
+#include "resampling_filterbank.h"
+#include "util.h"
 #include <array>
 #include <atomic>
 #include <memory>

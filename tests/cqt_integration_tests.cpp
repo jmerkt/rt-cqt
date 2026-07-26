@@ -1,5 +1,5 @@
-#include "ConstantQTransform.h"
-#include "SlidingCqt.h"
+#include "constant_q_transform.h"
+#include "sliding_cqt.h"
 
 #include <algorithm>
 #include <array>

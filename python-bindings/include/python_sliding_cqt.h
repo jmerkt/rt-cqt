@@ -3,14 +3,14 @@
 
  This file is part of the rt-cqt library. Copyright (C) the rt-cqt developers.
 
- See LICENSE.txt for  more info.
+ See LICENSE.txt for more info.
 
  ==============================================================================
 */
 
 #pragma once
 
-#include "../../include/SlidingCqt.h"
+#include "../../include/sliding_cqt.h"
 
 #include <complex>
 #include <cstring>

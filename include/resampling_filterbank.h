@@ -19,8 +19,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include "../submodules/audio-utils/include/CircularBuffer.h"
-#include "Resampling.h"
+#include "../submodules/audio-utils/include/circular_buffer.h"
+#include "resampling.h"
 
 /*
 This class handles multirate resampling of the input data. Input callbacks may

@@ -1,6 +1,6 @@
-#include "../python-bindings/include/Python_ResamplingFilterbank.h"
-#include "Resampling.h"
-#include "ResamplingFilterbank.h"
+#include "../python-bindings/include/python_resampling_filterbank.h"
+#include "resampling.h"
+#include "resampling_filterbank.h"
 
 #include <algorithm>
 #include <cmath>

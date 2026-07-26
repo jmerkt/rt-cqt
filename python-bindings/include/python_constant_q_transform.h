@@ -3,14 +3,14 @@
 
  This file is part of the rt-cqt library. Copyright (C) the rt-cqt developers.
 
- See LICENSE.txt for  more info.
+ See LICENSE.txt for more info.
 
  ==============================================================================
 */
 
 #pragma once
 
-#include "../../include/ConstantQTransform.h"
+#include "../../include/constant_q_transform.h"
 
 #include <cstring>
 #include <vector>

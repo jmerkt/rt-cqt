@@ -3,14 +3,14 @@
 
  This file is part of the rt-cqt library. Copyright (C) the rt-cqt developers.
 
- See LICENSE.txt for  more info.
+ See LICENSE.txt for more info.
 
  ==============================================================================
 */
 
 #pragma once
 
-#include "../submodules/audio-utils/include/Utils.h"
+#include "../submodules/audio-utils/include/utils.h"
 #include <cassert>
 #include <cmath>
 #include <cstddef>

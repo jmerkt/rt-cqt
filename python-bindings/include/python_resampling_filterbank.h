@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "../../include/ResamplingFilterbank.h"
+#include "../../include/resampling_filterbank.h"
 
 #include <algorithm>
 #include <stdexcept>

@@ -1,8 +1,8 @@
 # rt-cqt: Real-Time Constant-Q Transform
 rt-cqt aims to be a reasonable fast, header-only C++11 library for performing the Constant-Q Transform (CQT), optimized for real-time audio applications. It supports dynamic handling of different block sizes and sample rates, making it ideal for scenarios with varying audio processing demands. The library offers two distinct implementations:
 
-1. Constant-Q Transform ([include/ConstantQTransform.h](include/ConstantQTransform.h)): This version performs a Fast Fourier Transform (FFT) for each octave.
-2. Sliding Constant-Q Transform ([include/SlidingCqt.h](include/SlidingCqt.h)): This version minimizes latency by continuously updating frequency bins with every new audio sample, making it particularly suitable low-latency applications.
+1. Constant-Q Transform ([include/constant_q_transform.h](include/constant_q_transform.h)): This version performs a Fast Fourier Transform (FFT) for each octave.
+2. Sliding Constant-Q Transform ([include/sliding_cqt.h](include/sliding_cqt.h)): This version minimizes latency by continuously updating frequency bins with every new audio sample, making it particularly suitable low-latency applications.
 
 Both implementations utilize polyphase IIR lowpass filters for efficient upsampling and downsampling, which reduces computational overhead by processing lower octaves at reduced sample rates. 
 

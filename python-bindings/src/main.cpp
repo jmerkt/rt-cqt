@@ -3,9 +3,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "../include/Python_ConstantQTransform.h"
-#include "../include/Python_ResamplingFilterbank.h"
-#include "../include/Python_SlidingCqt.h"
+#include "../include/python_constant_q_transform.h"
+#include "../include/python_resampling_filterbank.h"
+#include "../include/python_sliding_cqt.h"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)

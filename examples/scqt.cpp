@@ -1,4 +1,4 @@
-#include "SlidingCqt.h"
+#include "sliding_cqt.h"
 
 int main(int argc, char *argv[])
 {
