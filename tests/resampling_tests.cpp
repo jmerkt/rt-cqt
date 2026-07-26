@@ -57,12 +57,12 @@ namespace
     {
         const std::vector<double> input = make_noise(1024);
 
-        Cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> whole_downsampler;
+        rt_cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> whole_downsampler;
         whole_downsampler.init(1024, true, TEST_TRANSITION_BANDWIDTH);
         double *whole_down_data = whole_downsampler.process_down(input.data());
         const std::vector<double> whole_down(whole_down_data, whole_down_data + 512);
 
-        Cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> partitioned_downsampler;
+        rt_cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> partitioned_downsampler;
         partitioned_downsampler.init(256, true, TEST_TRANSITION_BANDWIDTH);
         std::vector<double> partitioned_down;
         partitioned_down.reserve(512);
@@ -73,12 +73,12 @@ namespace
         }
         require_near(partitioned_down, whole_down, 1.e-14, "Half-band downsampling depends on block partition");
 
-        Cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> whole_upsampler;
+        rt_cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> whole_upsampler;
         whole_upsampler.init(512, false, TEST_TRANSITION_BANDWIDTH);
         double *whole_up_data = whole_upsampler.process_up(whole_down.data());
         const std::vector<double> whole_up(whole_up_data, whole_up_data + 1024);
 
-        Cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> partitioned_upsampler;
+        rt_cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> partitioned_upsampler;
         partitioned_upsampler.init(128, false, TEST_TRANSITION_BANDWIDTH);
         std::vector<double> partitioned_up;
         partitioned_up.reserve(1024);
@@ -91,7 +91,7 @@ namespace
 
         partitioned_downsampler.init(256, true, TEST_TRANSITION_BANDWIDTH);
         double *reinitialized_data = partitioned_downsampler.process_down(input.data());
-        Cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> fresh_downsampler;
+        rt_cqt::HalfBandLowpass<double, TEST_ALLPASS_COUNT> fresh_downsampler;
         fresh_downsampler.init(256, true, TEST_TRANSITION_BANDWIDTH);
         double *fresh_data = fresh_downsampler.process_down(input.data());
         require_near(std::vector<double>(reinitialized_data, reinitialized_data + 128),
@@ -104,13 +104,13 @@ namespace
     {
         const std::vector<double> input = make_noise(1024);
 
-        Cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> whole;
-        whole.init(3, 1024, Cqt::DirectionConfig::Down);
+        rt_cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> whole;
+        whole.init(3, 1024, rt_cqt::DirectionConfig::Down);
         double *whole_data = whole.process_down(input.data());
         const std::vector<double> expected(whole_data, whole_data + 128);
 
-        Cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> partitioned;
-        partitioned.init(3, 256, Cqt::DirectionConfig::Down);
+        rt_cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> partitioned;
+        partitioned.init(3, 256, rt_cqt::DirectionConfig::Down);
         std::vector<double> actual;
         actual.reserve(128);
         for (std::size_t offset = 0; offset < input.size(); offset += 256)
@@ -121,14 +121,14 @@ namespace
 
         require_near(actual, expected, 1.e-14, "Power-of-two resampling depends on block partition");
 
-        Cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> whole_round_trip;
-        whole_round_trip.init(3, 1024, Cqt::DirectionConfig::DownUp);
+        rt_cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> whole_round_trip;
+        whole_round_trip.init(3, 1024, rt_cqt::DirectionConfig::DownUp);
         double *whole_down = whole_round_trip.process_down(input.data());
         double *whole_up = whole_round_trip.process_up(whole_down);
         const std::vector<double> expected_round_trip(whole_up, whole_up + 1024);
 
-        Cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> partitioned_round_trip;
-        partitioned_round_trip.init(3, 256, Cqt::DirectionConfig::DownUp);
+        rt_cqt::ResamplingHandler<double, TEST_ALLPASS_COUNT> partitioned_round_trip;
+        partitioned_round_trip.init(3, 256, rt_cqt::DirectionConfig::DownUp);
         std::vector<double> actual_round_trip;
         actual_round_trip.reserve(1024);
         for (std::size_t offset = 0; offset < input.size(); offset += 256)
@@ -157,7 +157,7 @@ namespace
                                              const std::vector<int> &partitions,
                                              const bool synthesize)
     {
-        Cqt::ResamplingFilterbank<StageCount> filterbank;
+        rt_cqt::ResamplingFilterbank<StageCount> filterbank;
         filterbank.init(sample_rate, maximum_callback_size, static_cast<int>(input.size() * 4));
 
         FilterbankRun<StageCount> result;
@@ -175,7 +175,7 @@ namespace
 
             for (int stage = 0; stage < StageCount; ++stage)
             {
-                Cqt::BufferPtr input_buffer = filterbank.get_stage_input_buffer(stage);
+                rt_cqt::BufferPtr input_buffer = filterbank.get_stage_input_buffer(stage);
                 const int stage_block_size = static_cast<int>(input_buffer->get_write_read_distance());
                 if (stage_block_size == 0)
                 {
@@ -208,7 +208,7 @@ namespace
 
     void test_filterbank_block_sizing()
     {
-        Cqt::ResamplingFilterbank<1> single_stage;
+        rt_cqt::ResamplingFilterbank<1> single_stage;
         single_stage.init(48000., 3, 16);
         require(single_stage.get_processing_block_size() == 3, "Single-stage filterbank was unnecessarily aligned");
         require(single_stage.get_origin_block_size() == 3, "Unexpected single-stage origin block");
@@ -216,35 +216,35 @@ namespace
         require(single_stage_result.stages_[0].size() == 12, "Single-stage analysis lost samples");
         require(single_stage_result.output_.size() == 12, "Single-stage synthesis lost samples");
 
-        Cqt::ResamplingFilterbank<9> filterbank_48;
+        rt_cqt::ResamplingFilterbank<9> filterbank_48;
         filterbank_48.init(48000., 64, 1024);
         require(filterbank_48.get_processing_block_size() == 256, "Unexpected 48 kHz processing block");
         require(filterbank_48.get_origin_block_size() == 256, "Unexpected 48 kHz origin block");
         require(filterbank_48.get_latency_samples() == 256, "Unexpected 48 kHz latency");
 
-        Cqt::ResamplingFilterbank<9> filterbank_44;
+        rt_cqt::ResamplingFilterbank<9> filterbank_44;
         filterbank_44.init(44100., 64, 1024);
         require(filterbank_44.get_processing_block_size() == 256, "Unexpected 44.1 kHz processing block");
         require(filterbank_44.get_origin_block_size() == 256, "Unexpected 44.1 kHz origin block");
 
-        Cqt::ResamplingFilterbank<9> filterbank_96;
+        rt_cqt::ResamplingFilterbank<9> filterbank_96;
         filterbank_96.init(96000., 64, 1024);
         require(filterbank_96.get_processing_block_size() == 512, "Unexpected 96 kHz processing block");
         require(filterbank_96.get_origin_block_size() == 256, "Unexpected 96 kHz origin block");
 
-        Cqt::ResamplingFilterbank<9> filterbank_88;
+        rt_cqt::ResamplingFilterbank<9> filterbank_88;
         filterbank_88.init(88200., 64, 1024);
         require(filterbank_88.get_processing_block_size() == 512, "Unexpected 88.2 kHz processing block");
         require(filterbank_88.get_origin_block_size() == 256, "Unexpected 88.2 kHz origin block");
 
-        Cqt::ResamplingFilterbank<9> large_callback_filterbank;
+        rt_cqt::ResamplingFilterbank<9> large_callback_filterbank;
         large_callback_filterbank.init(48000., 1000, 4096);
         require(large_callback_filterbank.get_processing_block_size() == 1024, "Callback was not aligned upward");
 
         bool rejected_unsupported_rate = false;
         try
         {
-            Cqt::ResamplingFilterbank<9> unsupported;
+            rt_cqt::ResamplingFilterbank<9> unsupported;
             unsupported.init(88201., 64, 1024);
         }
         catch (const std::invalid_argument &)
@@ -256,7 +256,7 @@ namespace
 
     void test_filterbank_batching()
     {
-        Cqt::ResamplingFilterbank<9> filterbank;
+        rt_cqt::ResamplingFilterbank<9> filterbank;
         filterbank.init(48000., 64, 1024);
         std::vector<double> block(64, 1.);
 
@@ -289,7 +289,7 @@ namespace
 
         for (const auto &[callback_size, processing_size] : callback_and_processing_sizes)
         {
-            Cqt::ResamplingFilterbank<9> filterbank;
+            rt_cqt::ResamplingFilterbank<9> filterbank;
             filterbank.init(48000., callback_size, processing_size * 4);
             require(filterbank.get_processing_block_size() == processing_size,
                     "Unexpected processing size for callback size " + std::to_string(callback_size));
@@ -357,7 +357,7 @@ namespace
 
     void test_python_plot_adapter()
     {
-        Cqt::PythonResamplingFilterbank<9> filterbank;
+        rt_cqt::PythonResamplingFilterbank<9> filterbank;
         filterbank.init(48000., 64);
         std::vector<double> block(64, 0.);
         block[0] = 1.;

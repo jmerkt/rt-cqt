@@ -62,7 +62,7 @@ namespace
     void test_sliding_cqt_batched_input()
     {
         constexpr int BLOCK_SIZE = 64;
-        Cqt::SlidingCqt<12, 9, false> cqt;
+        rt_cqt::SlidingCqt<12, 9, false> cqt;
         cqt.init(48000., BLOCK_SIZE);
 
         for (int block_index = 0; block_index < 12; ++block_index)
@@ -90,9 +90,9 @@ namespace
         constexpr int BLOCK_COUNT = 512;
         constexpr double SAMPLE_RATE = 48000.;
         constexpr int TONE = 8;
-        const double frequency = Cqt::compute_bin_frequency(Cqt::compute_reference_frequency(440.), 24, 0, TONE);
+        const double frequency = rt_cqt::compute_bin_frequency(rt_cqt::compute_reference_frequency(440.), 24, 0, TONE);
 
-        Cqt::SlidingCqt<24, 9, Windowing> cqt;
+        rt_cqt::SlidingCqt<24, 9, Windowing> cqt;
         cqt.init(SAMPLE_RATE, BLOCK_SIZE);
 
         std::vector<double> output(static_cast<std::size_t>(BLOCK_SIZE * BLOCK_COUNT), 0.);
@@ -127,7 +127,7 @@ namespace
     void test_constant_cqt_batched_schedule()
     {
         constexpr int BLOCK_SIZE = 64;
-        Cqt::ConstantQTransform<12, 9> cqt;
+        rt_cqt::ConstantQTransform<12, 9> cqt;
         cqt.init(64);
         cqt.init_sample_rate(48000., BLOCK_SIZE);
 
@@ -145,7 +145,7 @@ namespace
             std::array<int, 9> previous_synthesis_offset;
             first_delay.fill(-1);
             previous_synthesis_offset.fill(-1);
-            for (const Cqt::ScheduleElement &element : schedule)
+            for (const rt_cqt::ScheduleElement &element : schedule)
             {
                 require(element.sample() >= 0 && element.sample() < 256,
                         "Schedule position is outside the internal processing block");
@@ -173,9 +173,9 @@ namespace
         constexpr int BLOCK_SIZE = 64;
         constexpr int BLOCK_COUNT = 512;
         constexpr double SAMPLE_RATE = 48000.;
-        const double frequency = Cqt::compute_bin_frequency(Cqt::compute_reference_frequency(440.), 24, 0, 8);
+        const double frequency = rt_cqt::compute_bin_frequency(rt_cqt::compute_reference_frequency(440.), 24, 0, 8);
 
-        Cqt::ConstantQTransform<24, 9> cqt;
+        rt_cqt::ConstantQTransform<24, 9> cqt;
         cqt.init(64);
         cqt.init_sample_rate(SAMPLE_RATE, BLOCK_SIZE);
 
@@ -184,7 +184,7 @@ namespace
         {
             std::vector<double> input = make_sine_block(BLOCK_SIZE, block_index, SAMPLE_RATE, frequency);
             cqt.input_block(input.data(), BLOCK_SIZE);
-            for (const Cqt::ScheduleElement &element : cqt.get_cqt_schedule())
+            for (const rt_cqt::ScheduleElement &element : cqt.get_cqt_schedule())
             {
                 cqt.cqt(element);
                 cqt.icqt(element);

@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-namespace Cqt
+namespace rt_cqt
 {
 
     template <int StageCount>

@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace Cqt
+namespace rt_cqt
 {
 
     template <typename FloatType>
@@ -82,7 +82,7 @@ namespace Cqt
      * class handles allocation and downsampling or upsampling for incoming
      * blocks. A single instance must only process in one direction.
      */
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     class HalfBandLowpass
     {
     public:
@@ -102,8 +102,8 @@ namespace Cqt
 
     private:
         double transition_bandwidth_;
-        size_t allpass_count_;
-        size_t filter_order_;
+        std::size_t allpass_count_;
+        std::size_t filter_order_;
         std::vector<double> coefficients_;
 
         FirstOrderAllpass<FloatType> direct_path_filters_[AllpassCount];
@@ -121,14 +121,14 @@ namespace Cqt
         std::vector<double> design_filter();
     };
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     HalfBandLowpass<FloatType, AllpassCount>::HalfBandLowpass()
     {
         allpass_count_ = AllpassCount * 2;
         filter_order_ = 2 * allpass_count_ + 1;
     }
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline bool HalfBandLowpass<FloatType, AllpassCount>::init(const int expected_block_size,
                                                                bool downsampling,
                                                                double transition_bandwidth)
@@ -144,13 +144,13 @@ namespace Cqt
         coefficients_.clear();
         coefficients_ = design_filter();
         int filter_index = 0;
-        for (size_t i = 0; i < coefficients_.size(); i += 2)
+        for (std::size_t i = 0; i < coefficients_.size(); i += 2)
         {
             direct_path_filters_[filter_index].init_coefficient(coefficients_[i]);
             filter_index++;
         }
         filter_index = 0;
-        for (size_t i = 1; i < coefficients_.size(); i += 2)
+        for (std::size_t i = 1; i < coefficients_.size(); i += 2)
         {
             delay_path_filters_[filter_index].init_coefficient(coefficients_[i]);
             filter_index++;
@@ -177,7 +177,7 @@ namespace Cqt
         return true;
     }
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline FloatType *HalfBandLowpass<FloatType, AllpassCount>::process_down(const FloatType *const input_block)
     {
         int direct_output_index = 0;
@@ -193,7 +193,7 @@ namespace Cqt
             delay_output_index++;
         }
         delay_.process(delay_path_buffer_.data(), filter_block_size_);
-        for (size_t i = 0; i < AllpassCount; i++)
+        for (std::size_t i = 0; i < AllpassCount; i++)
         {
             direct_path_filters_[i].process(direct_path_buffer_.data(), filter_block_size_);
             delay_path_filters_[i].process(delay_path_buffer_.data(), filter_block_size_);
@@ -205,7 +205,7 @@ namespace Cqt
         return output_block_.data();
     };
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline FloatType *HalfBandLowpass<FloatType, AllpassCount>::process_up(const FloatType *const input_block)
     {
         for (int i = 0; i < input_block_size_; i++)
@@ -213,7 +213,7 @@ namespace Cqt
             direct_path_buffer_[i] = input_block[i];
             delay_path_buffer_[i] = input_block[i];
         }
-        for (size_t i = 0; i < AllpassCount; i++)
+        for (std::size_t i = 0; i < AllpassCount; i++)
         {
             direct_path_filters_[i].process(direct_path_buffer_.data(), filter_block_size_);
             delay_path_filters_[i].process(delay_path_buffer_.data(), filter_block_size_);
@@ -233,7 +233,7 @@ namespace Cqt
         return output_block_.data();
     };
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline std::vector<double> HalfBandLowpass<FloatType, AllpassCount>::design_filter()
     {
         // step 1
@@ -242,11 +242,11 @@ namespace Cqt
         const double e = (1. / 2.) * ((1. - std::sqrt(k_dash)) / (1. + std::sqrt(k_dash)));
         const double q = e + 2. * std::pow(e, 5) + 15. * std::pow(e, 9.) + 150. * std::pow(e, 13.);
         // step 2
-        const size_t n = filter_order_;
+        const std::size_t n = filter_order_;
         // step 3
         std::vector<double> w;
         std::vector<double> a_dash;
-        for (size_t i = 1; i <= ((n - 1) / 2); i++)
+        for (std::size_t i = 1; i <= ((n - 1) / 2); i++)
         {
             // w_i
             double delta = 1.;
@@ -301,7 +301,7 @@ namespace Cqt
     /**
     Resampling of audio blocks by a given power of 2.
     */
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     class ResamplingHandler
     {
     public:
@@ -331,13 +331,13 @@ namespace Cqt
         std::vector<HalfBandLowpass<FloatType, AllpassCount>> upsampling_filters_;
     };
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     ResamplingHandler<FloatType, AllpassCount>::ResamplingHandler(double transition_bandwidth)
     {
         transition_bandwidth_ = transition_bandwidth;
     }
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline void ResamplingHandler<FloatType, AllpassCount>::init(const int power_of_two_exponent,
                                                                  const int expected_block_size,
                                                                  DirectionConfig direction)
@@ -414,7 +414,7 @@ namespace Cqt
         }
     };
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline FloatType *ResamplingHandler<FloatType, AllpassCount>::process_down(const FloatType *const input_block)
     {
         assert(power_of_two_exponent_ == 0 || static_cast<int>(downsampling_filters_.size()) == power_of_two_exponent_);
@@ -428,7 +428,7 @@ namespace Cqt
         return output;
     };
 
-    template <typename FloatType, size_t AllpassCount>
+    template <typename FloatType, std::size_t AllpassCount>
     inline FloatType *ResamplingHandler<FloatType, AllpassCount>::process_up(const FloatType *const input_block)
     {
         assert(power_of_two_exponent_ == 0 || static_cast<int>(upsampling_filters_.size()) == power_of_two_exponent_);

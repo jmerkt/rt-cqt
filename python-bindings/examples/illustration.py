@@ -78,7 +78,7 @@ def process_signal(signal: np.ndarray, cqt_instance: cqt.Cqt24, sliding_cqt_inst
 
     for i_block in range(number_blocks):
         input_data = signal[i_block * block_size: (i_block + 1) * block_size]
-        # Cqt
+        # CQT
         magnitudes, output_data = process_cqt(cqt_instance, input_data)
         cqt_magnitudes[i_block, :] = magnitudes
         audio_output[i_block * block_size: (i_block + 1) * block_size] = output_data
@@ -178,7 +178,6 @@ fig_sliding_cqt.tight_layout()
 fig_cqt.savefig(os.path.join(pathlib.Path().resolve(), 'illustration_cqt.png'))
 fig_sliding_cqt.savefig(os.path.join(pathlib.Path().resolve(), 'illustration_sliding_cqt.png'))
 plt.show()
-
 
 
 

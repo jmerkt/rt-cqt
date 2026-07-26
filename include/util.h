@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace Cqt
+namespace rt_cqt
 {
     /**
      * Returns the frequency of the first bin of the highest octave for a given concert pitch.

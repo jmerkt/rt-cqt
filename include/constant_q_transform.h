@@ -22,6 +22,7 @@
 #include "util.h"
 #include <array>
 #include <atomic>
+#include <cstddef>
 #include <memory>
 
 #define SIMD_SZ 1
@@ -29,7 +30,7 @@
 #include "../submodules/pffft/pffft.hpp"
 #include <complex>
 
-namespace Cqt
+namespace rt_cqt
 {
 
     using namespace std::complex_literals;
@@ -39,10 +40,10 @@ namespace Cqt
     constexpr double WINDOW_ENERGY_LOSS_COMPENSATION{1.63};   // Fixed for Hanning window as of now
     constexpr double WINDOW_AMPLITUDE_LOSS_COMPENSATION{2.0}; // Fixed for Hanning window as of now
 
-    typedef pffft::AlignedVector<pffft::Types<double>::Complex> CplxVector;
-    typedef pffft::AlignedVector<double> RealVector;
-    typedef RealVector TimeDataType;
-    typedef CplxVector CqtBufferType;
+    using CplxVector = pffft::AlignedVector<pffft::Types<double>::Complex>;
+    using RealVector = pffft::AlignedVector<double>;
+    using TimeDataType = RealVector;
+    using CqtBufferType = CplxVector;
 
     /*
     Structure to schedule transformation timings.
@@ -180,12 +181,12 @@ namespace Cqt
                 inverse_kernels_[tone][i] = inverse_kernel_array[tone].at(i);
             }
             kernel_masks_[tone].resize(kernel_mask[tone].size(), 0);
-            for (size_t i = 0; i < kernel_mask[tone].size(); i++)
+            for (std::size_t i = 0; i < kernel_mask[tone].size(); i++)
             {
                 kernel_masks_[tone][i] = kernel_mask[tone][i];
             }
             inverse_kernel_masks_[tone].resize(inverse_kernel_mask[tone].size(), 0);
-            for (size_t i = 0; i < inverse_kernel_mask[tone].size(); i++)
+            for (std::size_t i = 0; i < inverse_kernel_mask[tone].size(); i++)
             {
                 inverse_kernel_masks_[tone][i] = inverse_kernel_mask[tone][i];
             }
@@ -221,7 +222,7 @@ namespace Cqt
         for (int tone = 0; tone < BinsPerOctave; tone++)
         {
             cqt_buffer_[tone] = 0. + 0.i;
-            for (size_t i = 0; i < kernel_masks_[tone].size(); i++)
+            for (std::size_t i = 0; i < kernel_masks_[tone].size(); i++)
             {
                 const int index = kernel_masks_[tone][i];
                 cqt_buffer_[tone] += spectrum_[index] * kernels_[tone][index];
@@ -239,7 +240,7 @@ namespace Cqt
         }
         for (int tone = 0; tone < BinsPerOctave; tone++)
         {
-            for (size_t i = 0; i < inverse_kernel_masks_[tone].size(); i++)
+            for (std::size_t i = 0; i < inverse_kernel_masks_[tone].size(); i++)
             {
                 const int index = inverse_kernel_masks_[tone][i];
                 inverse_spectrum_[index] += cqt_buffer_[tone] * inverse_kernels_[tone][index];
@@ -333,7 +334,7 @@ namespace Cqt
             return transform_handlers_[octave].get_output_buffer();
         };
         inline int get_hop_size(const int octave) { return hop_sizes_[octave]; };
-        inline size_t get_latency_samples(const int octave) { return latency_samples_[octave]; };
+        inline std::size_t get_latency_samples(const int octave) { return latency_samples_[octave]; };
         inline double get_latency_ms(const int octave) { return latency_ms_[octave]; };
         inline double get_octave_sample_rate(const int octave) { return octave_sample_rates_[octave]; };
         inline std::vector<std::vector<double>> &get_kernel_frequencies() { return kernel_frequencies_; };
@@ -351,7 +352,7 @@ namespace Cqt
         int bin_count_;
         int overlaps_[OctaveCount];
         double latency_ms_[OctaveCount];
-        size_t latency_samples_[OctaveCount];
+        std::size_t latency_samples_[OctaveCount];
         int hop_sizes_[OctaveCount];
         double sample_rate_;
         double octave_sample_rates_[OctaveCount];
@@ -359,7 +360,7 @@ namespace Cqt
 
         TransformationHandler<BinsPerOctave> transform_handlers_[OctaveCount];
         ResamplingFilterbank<OctaveCount> filterbank_;
-        size_t sample_counters_[OctaveCount];
+        std::size_t sample_counters_[OctaveCount];
 
         std::vector<ScheduleElement> schedule_;
 
@@ -461,9 +462,9 @@ namespace Cqt
         for (int octave = 0; octave < OctaveCount; octave++)
         {
             // latency per octave
-            latency_samples_[octave] = static_cast<size_t>(hop_sizes_[octave]) *
-                                       static_cast<size_t>(std::pow(2, octave)) *
-                                       static_cast<size_t>(std::pow(2, filterbank_.get_origin_downsampling()));
+            latency_samples_[octave] = static_cast<std::size_t>(hop_sizes_[octave]) *
+                                       static_cast<std::size_t>(std::pow(2, octave)) *
+                                       static_cast<std::size_t>(std::pow(2, filterbank_.get_origin_downsampling()));
             sample_counters_[octave] = latency_samples_[octave];
             // samplerates
             octave_sample_rates_[octave] = sample_rate_ / std::pow(2., octave);

@@ -16,7 +16,7 @@
 #include <cstring>
 #include <vector>
 
-namespace Cqt
+namespace rt_cqt
 {
     template <int BinsPerOctave, int OctaveCount, bool Windowing>
     class PythonSlidingCqt

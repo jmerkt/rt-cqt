@@ -1,5 +1,7 @@
 #include "sliding_cqt.h"
 
+#include <cstddef>
+
 int main(int argc, char *argv[])
 {
     constexpr int octave_number = 9;
@@ -13,7 +15,7 @@ int main(int argc, char *argv[])
     std::vector<double> audio_output_block(block_size, 0.);
     std::vector<std::complex<double>> cqt_domain_buffers[octave_number][bins_per_octave];
 
-    Cqt::SlidingCqt<bins_per_octave, octave_number, use_windowing> cqt;
+    rt_cqt::SlidingCqt<bins_per_octave, octave_number, use_windowing> cqt;
     cqt.init(sample_rate, block_size);
 
     for (int octave = 0; octave < octave_number; ++octave)
@@ -31,12 +33,12 @@ int main(int argc, char *argv[])
     for (int octave = 0; octave < octave_number; ++octave)
     {
         // Because the data for each octave is downsampled, the number of samples per octave and block varies.
-        const size_t number_octave_samples = cqt.get_samples_to_process(octave);
+        const std::size_t number_octave_samples = cqt.get_samples_to_process(octave);
         for (int tone = 0; tone < bins_per_octave; ++tone)
         {
             // Pull the cqt domain data for this octave and tone
             cqt.pull_bin_cqt_data(octave, tone, cqt_domain_buffers[octave][tone].data());
-            for (size_t sample = 0U; sample < number_octave_samples; ++sample)
+            for (std::size_t sample = 0U; sample < number_octave_samples; ++sample)
             {
                 // Here, we can manipulate the complex values for each sample, bin and octave
                 cqt_domain_buffers[octave][tone][sample] *= 2.0;
@@ -47,7 +49,7 @@ int main(int argc, char *argv[])
         }
     }
     auto cqt_audio_block = cqt.output_block(audio_input_block.size());
-    for (size_t sample = 0U; sample < audio_input_block.size(); ++sample)
+    for (std::size_t sample = 0U; sample < audio_input_block.size(); ++sample)
     {
         audio_output_block[sample] = cqt_audio_block[sample];
     }

@@ -1,5 +1,7 @@
 #include "constant_q_transform.h"
 
+#include <cstddef>
+
 int main(int argc, char *argv[])
 {
     const int hop_size = 256;
@@ -12,7 +14,7 @@ int main(int argc, char *argv[])
     std::vector<double> audio_input_block(block_size, 0.);
     std::vector<double> audio_output_block(block_size, 0.);
 
-    Cqt::ConstantQTransform<bins_per_octave, octave_number> cqt;
+    rt_cqt::ConstantQTransform<bins_per_octave, octave_number> cqt;
     cqt.init(hop_size); // Separate hop-sizes for each octave can be initialized using the .init(std::vector<int>
                         // octave_hop_sizes) overload
     cqt.init_sample_rate(sample_rate, block_size);
@@ -27,7 +29,7 @@ int main(int argc, char *argv[])
         cqt.icqt(element);
     }
     auto cqt_audio_block = cqt.output_block(audio_input_block.size());
-    for (size_t i = 0U; i < audio_input_block.size(); ++i)
+    for (std::size_t i = 0U; i < audio_input_block.size(); ++i)
     {
         audio_output_block[i] = cqt_audio_block[i];
     }

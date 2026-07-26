@@ -33,7 +33,7 @@ The supported input sample rates are power-of-two multiples of either 44.1 kHz
 or 48 kHz.
 */
 
-namespace Cqt
+namespace rt_cqt
 {
 
     using BufferPtr = audio_utils::CircularBuffer<double> *;
