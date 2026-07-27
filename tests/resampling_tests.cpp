@@ -1,8 +1,10 @@
 #include "../python-bindings/include/python_resampling_filterbank.h"
+#include "../submodules/audio-utils/include/circular_buffer.h"
 #include "resampling.h"
 #include "resampling_filterbank.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -51,6 +53,87 @@ namespace
             sample = distribution(generator);
         }
         return result;
+    }
+
+    void test_circular_buffer_states()
+    {
+        audio_utils::CircularBuffer<int> buffer(4);
+        require(buffer.get_buffer_size() == 4, "Circular buffer has an unexpected capacity");
+        require(buffer.is_empty(), "A new circular buffer is not empty");
+        require(!buffer.is_full(), "A new circular buffer is full");
+        require(buffer.get_available_sample_count() == 0, "A new circular buffer contains samples");
+        require(buffer.get_free_sample_count() == 4, "A new circular buffer reports the wrong free space");
+
+        const std::array<int, 4> initial{1, 2, 3, 4};
+        buffer.push_block(initial.data(), static_cast<int>(initial.size()));
+        require(buffer.is_full(), "A capacity-sized write did not make the circular buffer full");
+        require(!buffer.is_empty(), "A full circular buffer is also reported as empty");
+        require(buffer.get_available_sample_count() == 4, "A full circular buffer reports zero available samples");
+        require(buffer.get_free_sample_count() == 0, "A full circular buffer reports free space");
+
+        buffer.push_sample(5);
+        require(buffer.is_full(), "Overwriting the oldest sample changed the full state");
+        require(buffer.pull_delay_sample(0) == 5, "The newest delayed sample was not retained");
+        require(buffer.pull_delay_sample(3) == 2, "The oldest retained delayed sample is incorrect");
+
+        std::array<int, 4> overwritten{};
+        buffer.pull_block(overwritten.data(), static_cast<int>(overwritten.size()));
+        require(overwritten == std::array<int, 4>{2, 3, 4, 5},
+                "A full circular buffer did not discard exactly its oldest sample");
+        require(buffer.is_empty(), "Consuming every sample did not empty the circular buffer");
+
+        const std::array<int, 3> wrapped_input{10, 11, 12};
+        buffer.push_block(wrapped_input.data(), static_cast<int>(wrapped_input.size()));
+        require(buffer.pull_sample() == 10, "Circular buffer returned the wrong sample before wrapping");
+        const std::array<int, 2> wrapped_tail{13, 14};
+        buffer.push_block(wrapped_tail.data(), static_cast<int>(wrapped_tail.size()));
+
+        std::array<int, 4> wrapped_output{};
+        buffer.pull_block(wrapped_output.data(), static_cast<int>(wrapped_output.size()));
+        require(wrapped_output == std::array<int, 4>{11, 12, 13, 14},
+                "Circular buffer order changed across pointer wraparound");
+
+        buffer.push_sample(21);
+        std::array<int, 2> unchanged{7, 8};
+        bool block_underflow_rejected = false;
+        try
+        {
+            buffer.pull_block(unchanged.data(), static_cast<int>(unchanged.size()));
+        }
+        catch (const std::underflow_error &)
+        {
+            block_underflow_rejected = true;
+        }
+        require(block_underflow_rejected, "Circular buffer accepted a block underflow");
+        require(buffer.get_available_sample_count() == 1, "A rejected block underflow consumed data");
+        require(unchanged == std::array<int, 2>{7, 8}, "A rejected block underflow modified its destination");
+        require(buffer.pull_sample() == 21, "A rejected block underflow corrupted the buffered sample");
+
+        bool sample_underflow_rejected = false;
+        try
+        {
+            static_cast<void>(buffer.pull_sample());
+        }
+        catch (const std::underflow_error &)
+        {
+            sample_underflow_rejected = true;
+        }
+        require(sample_underflow_rejected, "Circular buffer accepted a sample underflow");
+
+        buffer.push_sample(42);
+        buffer.clear();
+        require(buffer.is_empty(), "Clearing the circular buffer did not reset its logical state");
+
+        bool zero_size_rejected = false;
+        try
+        {
+            buffer.change_size(0);
+        }
+        catch (const std::invalid_argument &)
+        {
+            zero_size_rejected = true;
+        }
+        require(zero_size_rejected, "Circular buffer accepted a zero-sized allocation");
     }
 
     void test_half_band_partition_invariance()
@@ -176,7 +259,7 @@ namespace
             for (int stage = 0; stage < StageCount; ++stage)
             {
                 rt_cqt::BufferPtr input_buffer = filterbank.get_stage_input_buffer(stage);
-                const int stage_block_size = static_cast<int>(input_buffer->get_write_read_distance());
+                const int stage_block_size = static_cast<int>(input_buffer->get_available_sample_count());
                 if (stage_block_size == 0)
                 {
                     continue;
@@ -272,7 +355,7 @@ namespace
         for (int stage = 0; stage < 9; ++stage)
         {
             const std::size_t expected_size = static_cast<std::size_t>(256 >> stage);
-            require(filterbank.get_stage_input_buffer(stage)->get_write_read_distance() == expected_size,
+            require(filterbank.get_stage_input_buffer(stage)->get_available_sample_count() == expected_size,
                     "Unexpected stage block size at stage " + std::to_string(stage));
         }
     }
@@ -385,6 +468,7 @@ int main()
 {
     try
     {
+        run("circular-buffer full and empty states", test_circular_buffer_states);
         run("half-band partition invariance", test_half_band_partition_invariance);
         run("resampling-handler partition invariance", test_resampling_handler_partition_invariance);
         run("filterbank block sizing", test_filterbank_block_sizing);

@@ -47,7 +47,7 @@ namespace rt_cqt
             for (int stage = 0; stage < StageCount; ++stage)
             {
                 BufferPtr stage_input = filterbank_.get_stage_input_buffer(stage);
-                const int stage_block_size = static_cast<int>(stage_input->get_write_read_distance());
+                const int stage_block_size = static_cast<int>(stage_input->get_available_sample_count());
                 stages[static_cast<std::size_t>(stage)].resize(static_cast<std::size_t>(stage_block_size));
                 if (stage_block_size == 0)
                 {

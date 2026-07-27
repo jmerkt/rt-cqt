@@ -212,7 +212,7 @@ namespace rt_cqt
         for (std::size_t octave = 0; octave < OctaveCount; octave++)
         {
             BufferPtr input_buffer = filterbank_.get_stage_input_buffer(octave);
-            const int octave_sample_count = input_buffer->get_write_read_distance();
+            const int octave_sample_count = input_buffer->get_available_sample_count();
             samples_to_process_[octave] = octave_sample_count;
             if (octave_sample_count <= 0)
             {

@@ -48,9 +48,9 @@ def synth_chirp(time: np.ndarray):
 def process_cqt(cqt_instance: cqt.Cqt24, data: np.ndarray):
     cqt_instance.input_block(data)
     schedule = cqt_instance.get_cqt_schedule()
-    for s in schedule:
-        cqt_instance.cqt(s)
-        cqt_instance.icqt(s)
+    for schedule_element in schedule:
+        cqt_instance.cqt(schedule_element)
+        cqt_instance.icqt(schedule_element)
     magnitudes = np.zeros(number_bins)
     for i_octave in range(number_octaves):
         octave_data = cqt_instance.get_octave_cqt_buffer(i_octave)
@@ -83,14 +83,14 @@ def process_signal(signal: np.ndarray, cqt_instance: cqt.Cqt24, sliding_cqt_inst
         cqt_magnitudes[i_block, :] = magnitudes
         audio_output[i_block * block_size: (i_block + 1) * block_size] = output_data
         # SlidingCqt
-        magnitudes, output_data = process_sliding_cqt(cqt_instance_sliding, input_data)
+        magnitudes, output_data = process_sliding_cqt(sliding_cqt_instance, input_data)
         cqt_magnitudes_sliding[i_block, :] = magnitudes
         audio_output_sliding[i_block * block_size: (i_block + 1) * block_size] = output_data
 
     # Empty buffers
     for i_block in range(number_blocks):
         foo1, foo2 = process_cqt(cqt_instance, np.zeros(block_size))
-        foo1, foo2 = process_sliding_cqt(cqt_instance_sliding, np.zeros(block_size))
+        foo1, foo2 = process_sliding_cqt(sliding_cqt_instance, np.zeros(block_size))
 
     return cqt_magnitudes, cqt_magnitudes_sliding, audio_output, audio_output_sliding
 
@@ -140,12 +140,12 @@ cqt_instance.init(cqt_hop_size)
 cqt_instance.init_sample_rate(sample_rate, block_size)
 
 cqt_instance_sliding = cqt.SlidingCqt24()
-cqt_instance.init(sample_rate, block_size)
+cqt_instance_sliding.init(sample_rate, block_size)
 
 # Get bin frequencies and print
 bin_freqs = np.zeros((number_octaves, bins_per_octave), np.float64)
 for i_octave in range(number_octaves):
-    bin_freqs[i_octave, :] = np.flip(cqt_instance.get_octave_bin_frequencies(i_octave))
+    bin_freqs[i_octave, :] = np.flip(cqt_instance_sliding.get_octave_bin_frequencies(i_octave))
 # print(bin_freqs)
 
 # Synthesize sine tones
@@ -178,6 +178,5 @@ fig_sliding_cqt.tight_layout()
 fig_cqt.savefig(os.path.join(pathlib.Path().resolve(), 'illustration_cqt.png'))
 fig_sliding_cqt.savefig(os.path.join(pathlib.Path().resolve(), 'illustration_sliding_cqt.png'))
 plt.show()
-
 
 

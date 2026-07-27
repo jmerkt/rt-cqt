@@ -261,7 +261,7 @@ namespace rt_cqt
         // overlap-add
         std::fill(output_.begin(), output_.end(), 0.);
         //// pull whats left from the previous transform
-        stage_output_->pull_block(output_.data(), stage_output_->get_write_read_distance());
+        stage_output_->pull_block(output_.data(), stage_output_->get_available_sample_count());
         //// add new data
         int output_index = 0;
         for (int i = schedule.synthesis_offset(); i < (schedule.synthesis_offset() + FFT_SIZE); i++)

@@ -103,12 +103,7 @@ namespace rt_cqt
         int last_processed_input_size_{0};
         int pending_output_blocks_{0};
 
-        // A counted ring buffer is used here because CircularBuffer cannot
-        // distinguish an empty buffer from a completely full one.
-        std::vector<double> output_queue_;
-        std::size_t output_read_position_{0};
-        std::size_t output_write_position_{0};
-        std::size_t output_sample_count_{0};
+        audio_utils::CircularBuffer<double> output_queue_;
     };
 
     template <int StageCount>
@@ -220,10 +215,11 @@ namespace rt_cqt
         }
 
         const std::size_t output_queue_capacity = static_cast<std::size_t>(processing_block_size_) * 2U;
-        output_queue_.assign(output_queue_capacity, 0.);
-        output_read_position_ = 0;
-        output_write_position_ = static_cast<std::size_t>(processing_block_size_);
-        output_sample_count_ = static_cast<std::size_t>(processing_block_size_);
+        output_queue_.change_size(output_queue_capacity);
+        for (int sample = 0; sample < processing_block_size_; ++sample)
+        {
+            output_queue_.push_sample(0.);
+        }
     }
 
     template <int StageCount>
@@ -273,31 +269,21 @@ namespace rt_cqt
     template <int StageCount>
     inline void ResamplingFilterbank<StageCount>::push_output_samples(const double *const data, const int block_size)
     {
-        if (output_sample_count_ + static_cast<std::size_t>(block_size) > output_queue_.size())
+        if (static_cast<std::size_t>(block_size) > output_queue_.get_free_sample_count())
         {
             throw std::logic_error("Too many input blocks were submitted without consuming output");
         }
-        for (int sample = 0; sample < block_size; ++sample)
-        {
-            output_queue_[output_write_position_] = data[sample];
-            output_write_position_ = (output_write_position_ + 1U) % output_queue_.size();
-        }
-        output_sample_count_ += static_cast<std::size_t>(block_size);
+        output_queue_.push_block(data, block_size);
     }
 
     template <int StageCount>
     inline void ResamplingFilterbank<StageCount>::pull_output_samples(double *const data, const int block_size)
     {
-        if (output_sample_count_ < static_cast<std::size_t>(block_size))
+        if (static_cast<std::size_t>(block_size) > output_queue_.get_available_sample_count())
         {
             throw std::logic_error("More output was requested than the filterbank has buffered");
         }
-        for (int sample = 0; sample < block_size; ++sample)
-        {
-            data[sample] = output_queue_[output_read_position_];
-            output_read_position_ = (output_read_position_ + 1U) % output_queue_.size();
-        }
-        output_sample_count_ -= static_cast<std::size_t>(block_size);
+        output_queue_.pull_block(data, block_size);
     }
 
     template <int StageCount>
