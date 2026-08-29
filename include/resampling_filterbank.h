@@ -29,6 +29,14 @@ collected into a block that is divisible by every power-of-two resampling stage.
 Consequently all resampling is block based and every internal block produces at
 least one sample for the lowest stage.
 
+The block size passed to init() is the maximum callback size, not a required
+fixed size. For real-time use, each input_block() call should be followed by an
+output_block() call with the same actual size. The output queue is initialized
+with one internal processing block of silence. It therefore returns zeros until
+the first complete internal block has passed through analysis and synthesis,
+including when a host submits irregular blocks smaller than the configured
+maximum.
+
 The supported input sample rates are power-of-two multiples of either 44.1 kHz
 or 48 kHz.
 */
@@ -51,7 +59,7 @@ namespace rt_cqt
         ResamplingFilterbank() = default;
         ~ResamplingFilterbank() = default;
 
-        void init(const double sample_rate, const int block_size, const int buffer_size);
+        void init(const double sample_rate, const int maximum_callback_block_size, const int buffer_size);
 
         void input_block(const double *const data, const int block_size);
         double *output_block(const int block_size);
@@ -138,14 +146,15 @@ namespace rt_cqt
     }
 
     template <int StageCount>
-    inline void
-    ResamplingFilterbank<StageCount>::init(const double sample_rate, const int block_size, const int buffer_size)
+    inline void ResamplingFilterbank<StageCount>::init(const double sample_rate,
+                                                       const int maximum_callback_block_size,
+                                                       const int buffer_size)
     {
         if (!std::isfinite(sample_rate) || sample_rate <= 0.)
         {
             throw std::invalid_argument("The sample rate must be finite and positive");
         }
-        if (block_size <= 0 || buffer_size <= 0)
+        if (maximum_callback_block_size <= 0 || buffer_size <= 0)
         {
             throw std::invalid_argument("Block and buffer sizes must be positive");
         }
@@ -182,8 +191,8 @@ namespace rt_cqt
         }
         const int input_alignment = origin_factor * filterbank_factor;
 
-        maximum_callback_block_size_ = block_size;
-        processing_block_size_ = round_up_to_multiple(block_size, input_alignment);
+        maximum_callback_block_size_ = maximum_callback_block_size;
+        processing_block_size_ = round_up_to_multiple(maximum_callback_block_size, input_alignment);
         origin_block_size_ = processing_block_size_ / origin_factor;
         lowest_stage_block_size_ = origin_block_size_ / filterbank_factor;
 

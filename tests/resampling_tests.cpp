@@ -419,6 +419,38 @@ namespace
                 "Filterbank synthesis produced only silence");
     }
 
+    void test_filterbank_maximum_callback_with_small_blocks()
+    {
+        constexpr int MAXIMUM_CALLBACK_SIZE = 1024;
+        constexpr int PROCESSING_SIZE = 1024;
+        const std::vector<double> input = make_noise(PROCESSING_SIZE * 4);
+
+        const auto maximum_sized_callbacks =
+            run_filterbank<9>(48000., MAXIMUM_CALLBACK_SIZE, input, {MAXIMUM_CALLBACK_SIZE}, true);
+        const auto small_irregular_callbacks =
+            run_filterbank<9>(48000., MAXIMUM_CALLBACK_SIZE, input, {1, 7, 31, 64, 127, 3, 511, 19, 255}, true);
+
+        for (int stage = 0; stage < 9; ++stage)
+        {
+            require_near(small_irregular_callbacks.stages_[static_cast<std::size_t>(stage)],
+                         maximum_sized_callbacks.stages_[static_cast<std::size_t>(stage)],
+                         1.e-14,
+                         "Configured-maximum filterbank analysis depends on the actual callback sizes");
+        }
+        require_near(small_irregular_callbacks.output_,
+                     maximum_sized_callbacks.output_,
+                     1.e-14,
+                     "Configured-maximum filterbank synthesis depends on the actual callback sizes");
+        require(std::all_of(small_irregular_callbacks.output_.begin(),
+                            small_irregular_callbacks.output_.begin() + PROCESSING_SIZE,
+                            [](const double sample) { return sample == 0.; }),
+                "Small callbacks did not receive silence for the full startup latency");
+        require(std::any_of(small_irregular_callbacks.output_.begin() + PROCESSING_SIZE,
+                            small_irregular_callbacks.output_.end(),
+                            [](const double sample) { return std::abs(sample) > 1.e-12; }),
+                "Small callbacks never received the processed signal after startup");
+    }
+
     void test_filterbank_at_96_khz()
     {
         const std::vector<double> input = make_noise(512);
@@ -475,6 +507,7 @@ int main()
         run("filterbank batching", test_filterbank_batching);
         run("callback-size matrix", test_callback_size_matrix);
         run("filterbank partition invariance", test_filterbank_partition_invariance);
+        run("maximum callback with small blocks", test_filterbank_maximum_callback_with_small_blocks);
         run("filterbank at 96 kHz", test_filterbank_at_96_khz);
         run("Python plot adapter", test_python_plot_adapter);
     }
