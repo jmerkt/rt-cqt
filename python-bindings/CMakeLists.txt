@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.4...3.18)
 project(prtcqt)
 
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
+	set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+endif()
+
+set(PYBIND11_FINDPYTHON ON)
 add_subdirectory(../submodules/pybind11 ${CMAKE_CURRENT_BINARY_DIR}/pybind11)
 pybind11_add_module(prtcqt src/main.cpp)
+target_compile_features(prtcqt PRIVATE cxx_std_17)
 
 # EXAMPLE_VERSION_INFO is defined by setup.py and passed into the C++ code as a
 # define (VERSION_INFO) here.

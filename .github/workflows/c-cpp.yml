@@ -15,7 +15,32 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - name: "Create build directory and run CMake"
-      run: cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-    - name: "Build Project" 
-      run: cmake --build build --target all --config Release -- -j4 
+    - name: "Configure native build"
+      run: cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DRTCQT_BUILD_PYTHON_BINDINGS=OFF
+    - name: "Build native project"
+      run: cmake --build build --target all --config Release -- -j4
+    - name: "Run native tests"
+      run: ctest --test-dir build --output-on-failure
+
+    - name: "Install uv"
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: "0.11.32"
+        enable-cache: true
+        working-directory: python-bindings
+    - name: "Create Python test environment"
+      working-directory: python-bindings
+      run: uv sync --locked
+    - name: "Build Python bindings"
+      working-directory: python-bindings
+      run: |
+        uv run --frozen cmake -S . -B build -DPython_EXECUTABLE=.venv/bin/python
+        uv run --frozen cmake --build build --target prtcqt -- -j4
+    - name: "Run Python tests"
+      working-directory: python-bindings
+      run: uv run --frozen pytest
+    - name: "Generate resampling plot"
+      working-directory: python-bindings
+      env:
+        MPLBACKEND: Agg
+      run: uv run --frozen python examples/resampling_filterbank.py

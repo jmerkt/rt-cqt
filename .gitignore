@@ -1,26 +1,22 @@
-# Prerequisites
+# Compiler-generated dependencies
 *.d
 
-# Compiled Object files
+# Compiled objects
 *.slo
 *.lo
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
 *.mod
 *.smod
 
-# Compiled Static libraries
+# Precompiled headers
+*.gch
+*.pch
+
+# Libraries
+*.so
+*.dylib
+*.dll
 *.lai
 *.la
 *.a
@@ -31,11 +27,58 @@
 *.out
 *.app
 
-# Python
-*.idea
+# CMake and native build output
+build/
+build-*/
+cmake-build-*/
+_build/
+_generate/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
+install_manifest.txt
+compile_commands.json
+build.ninja
+rules.ninja
+.ninja_deps
+.ninja_log
 
-# Cmake build folders
-*build
+# Python environments, caches, and package output
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+dist/
+*.egg-info/
 
-# IDEs
-.vscode
+# Editors and IDEs
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*~
+*.swp
+*.swo
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
